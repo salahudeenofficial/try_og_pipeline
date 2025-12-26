@@ -1,0 +1,35 @@
+# Qwen-Image-Edit-2509 Requirements
+# Base Image: vastai/base-image:cuda-12.4.1-cudnn-devel-ubuntu22.04-py310-ipv2
+
+# Core ML Frameworks - PyTorch with CUDA 12.4 support
+--extra-index-url https://download.pytorch.org/whl/cu124
+torch>=2.4.0
+torchvision>=0.19.0
+torchaudio>=2.4.0
+
+# Hugging Face Libraries
+# Install diffusers from git for QwenImageEditPlusPipeline support
+# pip install git+https://github.com/huggingface/diffusers
+transformers>=4.51.3
+accelerate>=0.30.0
+safetensors>=0.4.0
+huggingface_hub>=0.23.0
+
+# Image Processing
+Pillow>=10.0.0
+opencv-python>=4.8.0
+
+# Utilities
+numpy>=1.24.0
+tqdm>=4.66.0
+einops>=0.7.0
+
+# Optional: For better performance
+xformers>=0.0.27
+
+# Sentencepiece for tokenizers
+sentencepiece>=0.2.0
+
+# For video processing (optional)
+imageio>=2.31.0
+imageio-ffmpeg>=0.4.9
