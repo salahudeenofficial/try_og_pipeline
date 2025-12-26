@@ -136,7 +136,7 @@ def load_pipeline_fp8(device: str = "cuda"):
     try:
         fp8_weights_path = hf_hub_download(
             repo_id=fp8_repo,
-            filename="diffusion_pytorch_model.safetensors",
+            filename="qwen_image_edit_2511_fp8_e4m3fn.safetensors",
         )
         print(f"✅ FP8 weights downloaded: {fp8_weights_path}")
     except Exception as e:
