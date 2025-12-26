@@ -162,15 +162,15 @@ def load_pipeline(model_id: str = "Qwen/Qwen-Image-Edit-2511",
     print("This may take several minutes on first run...")
     print("-" * 60)
     
+    # Clear any existing GPU memory
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
+        import gc
+        gc.collect()
+    
     start_time = time.time()
     
     if lora_path is not None and os.path.exists(lora_path):
-        # Load with LoRA - need to configure scheduler for distilled model
-        print("Loading transformer model...")
-        model = QwenImageTransformer2DModel.from_pretrained(
-            model_id, subfolder="transformer", torch_dtype=dtype
-        )
-        
         # Scheduler config for distilled LoRA (shift=3)
         scheduler_config = {
             "base_image_seq_len": 256,
@@ -190,37 +190,46 @@ def load_pipeline(model_id: str = "Qwen/Qwen-Image-Edit-2511",
         }
         scheduler = FlowMatchEulerDiscreteScheduler.from_config(scheduler_config)
         
-        print("Loading full pipeline with custom scheduler...")
+        # Load pipeline directly to GPU with device_map
+        print("Loading full pipeline with custom scheduler (direct to GPU)...")
         pipeline = QwenImageEditPlusPipeline.from_pretrained(
-            model_id, 
-            transformer=model, 
-            scheduler=scheduler, 
-            torch_dtype=dtype
+            model_id,
+            scheduler=scheduler,
+            torch_dtype=dtype,
+            device_map="balanced",  # Automatically distribute across devices
         )
         
         print(f"Loading LoRA weights from: {lora_path}")
         pipeline.load_lora_weights(lora_path)
         print("✅ LoRA weights loaded successfully!")
+        
     else:
-        # Load base model without LoRA
-        print("Loading base pipeline (no LoRA)...")
+        # Load base model without LoRA - direct to GPU
+        print("Loading base pipeline (no LoRA, direct to GPU)...")
         pipeline = QwenImageEditPlusPipeline.from_pretrained(
             model_id,
             torch_dtype=dtype,
+            device_map="balanced",
         )
     
     print(f"✅ Pipeline loaded in {time.time() - start_time:.2f} seconds")
     
-    # Move to GPU
-    print("Moving pipeline to GPU...")
-    pipeline.to(device)
-    pipeline.set_progress_bar_config(disable=False)
+    # Enable CPU offload for memory efficiency if needed
+    try:
+        # Check memory usage
+        if torch.cuda.is_available():
+            allocated = torch.cuda.memory_allocated() / (1024 ** 3)
+            total = torch.cuda.get_device_properties(0).total_memory / (1024 ** 3)
+            print(f"📊 GPU Memory - Allocated: {allocated:.2f} GB / {total:.2f} GB")
+            
+            # If we're using more than 90% of memory, enable offloading
+            if allocated / total > 0.9:
+                print("⚠️ Memory usage high, enabling sequential CPU offload...")
+                pipeline.enable_sequential_cpu_offload()
+    except Exception as e:
+        print(f"Note: Could not check/enable CPU offload: {e}")
     
-    # Print memory usage
-    if torch.cuda.is_available():
-        allocated = torch.cuda.memory_allocated() / (1024 ** 3)
-        reserved = torch.cuda.memory_reserved() / (1024 ** 3)
-        print(f"📊 GPU Memory - Allocated: {allocated:.2f} GB, Reserved: {reserved:.2f} GB")
+    pipeline.set_progress_bar_config(disable=False)
     
     print("=" * 60)
     return pipeline
