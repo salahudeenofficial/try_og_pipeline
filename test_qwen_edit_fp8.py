@@ -86,18 +86,17 @@ def download_fp8_model(model_dir: str = "./models"):
         return None
 
 
-def load_pipeline_fp8(model_id: str = "Qwen/Qwen-Image-Edit-2511",
-                      fp8_model_path: str = None,
-                      device: str = "cuda"):
-    """Load the FP8 quantized pipeline."""
+def load_pipeline_fp8(device: str = "cuda"):
+    """Load the FP8 quantized pipeline from 1038lab."""
     from diffusers import QwenImageEditPlusPipeline, FlowMatchEulerDiscreteScheduler
-    from safetensors.torch import load_file
+    
+    # Use pre-quantized FP8 model
+    model_id = "1038lab/Qwen-Image-Edit-2511-FP8"
     
     print("\n" + "=" * 60)
     print("🚀 Loading Qwen-Image-Edit-2511 FP8 Pipeline")
     print("=" * 60)
-    print(f"Base Model: {model_id}")
-    print(f"FP8 Weights: {fp8_model_path}")
+    print(f"Model: {model_id}")
     print(f"Expected VRAM: ~20-22GB (50% less than BF16)")
     print("-" * 60)
     
@@ -128,8 +127,8 @@ def load_pipeline_fp8(model_id: str = "Qwen/Qwen-Image-Edit-2511",
     }
     scheduler = FlowMatchEulerDiscreteScheduler.from_config(scheduler_config)
     
-    # Load the base pipeline
-    print("Loading base pipeline...")
+    # Load the FP8 quantized pipeline directly
+    print("Loading FP8 quantized pipeline...")
     pipeline = QwenImageEditPlusPipeline.from_pretrained(
         model_id,
         scheduler=scheduler,
@@ -137,16 +136,7 @@ def load_pipeline_fp8(model_id: str = "Qwen/Qwen-Image-Edit-2511",
         device_map="balanced",
     )
     
-    # Load FP8 weights if provided
-    if fp8_model_path and os.path.exists(fp8_model_path):
-        print(f"Loading FP8 weights from: {fp8_model_path}")
-        fp8_state_dict = load_file(fp8_model_path)
-        
-        # Apply FP8 weights to transformer
-        pipeline.transformer.load_state_dict(fp8_state_dict, strict=False)
-        print("✅ FP8 weights loaded!")
-    
-    print(f"✅ Pipeline loaded in {time.time() - start_time:.2f} seconds")
+    print(f"✅ FP8 Pipeline loaded in {time.time() - start_time:.2f} seconds")
     
     # Print memory usage
     if torch.cuda.is_available():
@@ -335,15 +325,10 @@ def main():
     
     # Load pipeline
     if args.use_fp8:
-        # FP8 mode (experimental)
-        fp8_path = download_fp8_model()
-        if fp8_path:
-            pipeline = load_pipeline_fp8(fp8_model_path=fp8_path)
-        else:
-            print("⚠️ FP8 model not available, falling back to standard")
-            args.use_fp8 = False
-    
-    if not args.use_fp8:
+        # FP8 mode - uses 1038lab/Qwen-Image-Edit-2511-FP8
+        print("\n🔧 Using FP8 quantized model for reduced VRAM usage...")
+        pipeline = load_pipeline_fp8()
+    else:
         # Standard BF16 with LoRA
         from huggingface_hub import hf_hub_download
         
