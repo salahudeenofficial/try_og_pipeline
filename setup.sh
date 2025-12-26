@@ -1,13 +1,13 @@
 #!/bin/bash
 # ================================================================
-# Qwen-Image-Edit-2509 Setup Script
+# Qwen-Image-Edit-2511 + Lightning LoRA Setup Script
 # Base Image: vastai/base-image:cuda-12.4.1-cudnn-devel-ubuntu22.04-py310-ipv2
 # ================================================================
 
 set -e  # Exit on error
 
 echo "========================================"
-echo "🚀 Qwen-Image-Edit-2509 Setup Script"
+echo "🚀 Qwen-Image-Edit-2511 + Lightning LoRA Setup"
 echo "========================================"
 echo ""
 
@@ -63,6 +63,14 @@ print(f'Transformers version: {transformers.__version__}')
 # Check if QwenImageEditPlusPipeline is available
 from diffusers import QwenImageEditPlusPipeline
 print('✅ QwenImageEditPlusPipeline is available!')
+
+# Check if LoRA loading works
+from diffusers.models import QwenImageTransformer2DModel
+print('✅ QwenImageTransformer2DModel is available!')
+
+# Check for key components
+from diffusers import FlowMatchEulerDiscreteScheduler
+print('✅ FlowMatchEulerDiscreteScheduler is available!')
 "
 
 echo ""
@@ -70,9 +78,18 @@ echo "========================================"
 echo "✅ Setup completed successfully!"
 echo "========================================"
 echo ""
-echo "To run a test, execute:"
-echo "  python test_qwen_edit.py"
+echo "📝 Available Commands:"
 echo ""
-echo "For custom input:"
-echo "  python test_qwen_edit.py --input your_image.png --prompt 'Your edit prompt'"
+echo "  1. Run with 4-Step Lightning LoRA (⚡ ~10x faster):"
+echo "     python test_qwen_edit.py"
+echo ""
+echo "  2. Run with custom image:"
+echo "     python test_qwen_edit.py --input your_image.png --prompt 'Your edit prompt'"
+echo ""
+echo "  3. Run with base model (slower, 40 steps):"
+echo "     python test_qwen_edit.py --no-lora --steps 40 --cfg 4.0"
+echo ""
+echo "📌 Models used:"
+echo "   - Base: Qwen/Qwen-Image-Edit-2511"
+echo "   - LoRA: lightx2v/Qwen-Image-Edit-2511-Lightning (4-step distilled)"
 echo ""

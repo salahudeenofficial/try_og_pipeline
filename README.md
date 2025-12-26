@@ -1,6 +1,15 @@
-# Qwen-Image-Edit-2509 Pipeline
+# Qwen-Image-Edit-2511 with Lightning LoRA ⚡
 
-Run the **Qwen-Image-Edit-2509** model on Vast.ai GPU instances.
+Run **Qwen-Image-Edit-2511** with the **4-Step Lightning LoRA** for ~10x faster inference on Vast.ai GPU instances.
+
+## 🚀 Key Features
+
+| Feature | Description |
+|---------|-------------|
+| **Base Model** | [Qwen/Qwen-Image-Edit-2511](https://huggingface.co/Qwen/Qwen-Image-Edit-2511) - Latest image editing model |
+| **Lightning LoRA** | [lightx2v/Qwen-Image-Edit-2511-Lightning](https://huggingface.co/lightx2v/Qwen-Image-Edit-2511-Lightning) |
+| **Speed** | 4 steps vs 40 steps = ~10x faster! |
+| **Quality** | Maintains editing quality with step distillation |
 
 ## 🖥️ Recommended Instance Configuration
 
@@ -8,10 +17,10 @@ Run the **Qwen-Image-Edit-2509** model on Vast.ai GPU instances.
 |-----------|-------|
 | **Base Image** | `vastai/base-image:cuda-12.4.1-cudnn-devel-ubuntu22.04-py310-ipv2` |
 | **GPU** | NVIDIA L40S (45GB VRAM) or similar |
-| **Disk Space** | 100GB+ (model is ~60GB) |
+| **Disk Space** | 100GB+ (model is ~60GB + LoRA) |
 | **System RAM** | 64GB+ recommended |
 | **Python** | 3.10 |
-| **CUDA** | 12.4.1 |
+| **CUDA** | 12.4.1+ |
 
 ## 🚀 Quick Start
 
@@ -31,13 +40,13 @@ chmod +x setup.sh
 
 This will:
 - Install PyTorch with CUDA 12.4 support
-- Install the latest diffusers from GitHub
+- Install diffusers and transformers from GitHub (latest)
 - Install all other dependencies
 - Verify the installation
 
-### 3. Run a Test
+### 3. Run a Test (with 4-Step Lightning LoRA ⚡)
 
-**Basic test (creates a test image automatically):**
+**Basic test with sample image:**
 ```bash
 python test_qwen_edit.py
 ```
@@ -46,80 +55,108 @@ python test_qwen_edit.py
 ```bash
 python test_qwen_edit.py \
     --input your_image.png \
-    --prompt "Transform this into a watercolor painting"
+    --prompt "Transform into a watercolor painting"
 ```
 
-**Multi-image editing:**
+**Multi-image editing (2-3 images):**
 ```bash
 python test_qwen_edit.py \
     --input person1.png person2.png \
-    --prompt "Both people are standing in a beautiful garden"
+    --prompt "Both people are standing together in a beautiful garden"
+```
+
+### 4. Run with Base Model (no LoRA, slower but potentially higher quality)
+
+```bash
+python test_qwen_edit.py --no-lora --steps 40 --cfg 4.0
 ```
 
 ## 📋 Command Line Options
 
 | Option | Description | Default |
 |--------|-------------|---------|
-| `--input`, `-i` | Path to input image(s) | Creates test image |
-| `--prompt`, `-p` | Edit prompt | "Transform this image into a watercolor painting style" |
+| `--input`, `-i` | Path to input image(s) | Downloads sample |
+| `--prompt`, `-p` | Edit prompt | "Transform into oil painting..." |
 | `--output`, `-o` | Output path | `output_image.png` |
-| `--steps` | Inference steps | 40 |
-| `--cfg` | True CFG scale | 4.0 |
+| `--steps` | Inference steps | 4 (LoRA) / 40 (base) |
+| `--cfg` | True CFG scale | 1.0 (LoRA) / 4.0 (base) |
 | `--seed` | Random seed | 42 |
+| `--no-lora` | Use base model | False |
+| `--lora-dir` | LoRA weights directory | `./lora_weights` |
 | `--skip-cuda-check` | Skip CUDA check | False |
 
 ## 🎨 Example Prompts
 
 **Style Transfer:**
-- "Transform this into an oil painting"
+- "Transform this into a beautiful oil painting"
 - "Make this look like a pencil sketch"
-- "Convert to anime style"
+- "Convert to anime style with vibrant colors"
+
+**Lighting Effects:**
+- "Add dramatic sunset lighting"
+- "Create a cinematic night scene with neon lights"
+- "Add soft studio lighting"
 
 **Scene Editing:**
-- "Add a sunset in the background"
 - "Place the person in a coffee shop"
-- "Change the background to a beach"
+- "Change the background to a beach at sunset"
+- "Add snow to the scene"
 
 **Person Editing:**
 - "Make the person wear a red dress"
-- "Change the hairstyle to curly"
-- "Add sunglasses"
+- "Change the hairstyle to curly blonde"
+- "Add sunglasses and a hat"
 
 **Multi-Image (2-3 images):**
 - "The two people are shaking hands in an office"
 - "Place the product next to the person"
-- "Combine these scenes into one panoramic view"
+- "Combine these images into one scene"
 
 ## 📊 Expected Performance
 
+### With 4-Step Lightning LoRA ⚡
 | Metric | Expected Value |
 |--------|----------------|
-| **Model Load Time** | 2-5 minutes (first run, downloads ~60GB) |
-| **Inference Time** | 30-60 seconds (40 steps) |
+| **Model Load Time** | 2-5 minutes (first run) |
+| **Inference Time** | ~3-8 seconds |
 | **VRAM Usage** | ~25-35GB |
-| **Peak Memory** | ~40GB |
+| **Speed Improvement** | ~10x faster |
+
+### With Base Model (40 steps)
+| Metric | Expected Value |
+|--------|----------------|
+| **Model Load Time** | 2-5 minutes (first run) |
+| **Inference Time** | ~30-60 seconds |
+| **VRAM Usage** | ~25-35GB |
 
 ## 🔧 Troubleshooting
 
 ### Out of Memory (OOM)
 If you get OOM errors, try:
 ```bash
-# Reduce inference steps
-python test_qwen_edit.py --steps 20
+# Use fewer steps
+python test_qwen_edit.py --steps 2
 
-# Use smaller images (resize your input)
+# Or use smaller input images (resize before running)
+```
+
+### LoRA Download Failed
+Manually download from: https://huggingface.co/lightx2v/Qwen-Image-Edit-2511-Lightning
+```bash
+pip install "huggingface_hub[cli]"
+huggingface-cli download lightx2v/Qwen-Image-Edit-2511-Lightning \
+    --local-dir ./lora_weights
 ```
 
 ### Pipeline Not Found
-Make sure you installed diffusers from git:
+Ensure diffusers is installed from git:
 ```bash
 pip install git+https://github.com/huggingface/diffusers
 ```
 
 ### CUDA Errors
-Verify CUDA installation:
 ```bash
-python -c "import torch; print(torch.cuda.is_available())"
+python -c "import torch; print(f'CUDA: {torch.cuda.is_available()}')"
 nvidia-smi
 ```
 
@@ -127,19 +164,27 @@ nvidia-smi
 
 ```
 try_og_pipeline/
-├── README.md           # This file
-├── requirements.txt    # Python dependencies
-├── setup.sh           # Setup script (run first)
-├── test_qwen_edit.py  # Main test script
-└── output_image.png   # Generated output (after running test)
+├── README.md              # This file
+├── requirements.txt       # Python dependencies
+├── setup.sh              # Setup script (run first)
+├── test_qwen_edit.py     # Main test script
+├── lora_weights/         # LoRA weights (downloaded automatically)
+│   └── Qwen-Image-Edit-2511-Lightning-4steps-V1.0-bf16.safetensors
+└── output_image.png      # Generated output
 ```
 
 ## 📚 References
 
-- [Qwen-Image-Edit-2509 on Hugging Face](https://huggingface.co/Qwen/Qwen-Image-Edit-2509)
+- [Qwen-Image-Edit-2511 on Hugging Face](https://huggingface.co/Qwen/Qwen-Image-Edit-2511)
+- [Lightning LoRA on Hugging Face](https://huggingface.co/lightx2v/Qwen-Image-Edit-2511-Lightning)
+- [Qwen-Image-Lightning GitHub](https://github.com/ModelTC/Qwen-Image-Lightning)
 - [Diffusers Documentation](https://huggingface.co/docs/diffusers)
 - [Vast.ai GPU Instances](https://vast.ai/)
 
 ## 📄 License
 
-This code is provided for testing purposes. The Qwen-Image-Edit-2509 model has its own license - please refer to the [model card](https://huggingface.co/Qwen/Qwen-Image-Edit-2509) for details.
+This code is provided for testing purposes. 
+- Qwen-Image-Edit-2511 is licensed under Apache 2.0
+- Lightning LoRA follows the base model license
+
+Please refer to the respective model cards for full license details.

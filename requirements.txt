@@ -1,4 +1,4 @@
-# Qwen-Image-Edit-2509 Requirements
+# Qwen-Image-Edit-2511 + Lightning LoRA Requirements
 # Base Image: vastai/base-image:cuda-12.4.1-cudnn-devel-ubuntu22.04-py310-ipv2
 
 # Core ML Frameworks - PyTorch with CUDA 12.4 support
@@ -9,7 +9,7 @@ torchaudio>=2.4.0
 
 # Hugging Face Libraries
 # NOTE: diffusers and transformers are installed from git in setup.sh
-# for huggingface-hub 1.x compatibility
+# for huggingface-hub 1.x compatibility and QwenImageEditPlusPipeline support
 # pip install git+https://github.com/huggingface/diffusers
 # pip install git+https://github.com/huggingface/transformers
 accelerate>=0.30.0
@@ -24,6 +24,7 @@ opencv-python>=4.8.0
 numpy>=1.24.0
 tqdm>=4.66.0
 einops>=0.7.0
+requests>=2.31.0
 
 # Optional: For better performance
 xformers>=0.0.27
