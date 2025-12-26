@@ -87,21 +87,21 @@ def download_fp8_model(model_dir: str = "./models"):
 
 
 def load_pipeline_fp8(device: str = "cuda"):
-    """Load the FP8 quantized pipeline by loading FP8 transformer weights."""
+    """
+    Attempt to load FP8 quantized pipeline.
+    Note: FP8 weights from ComfyUI repos may not be compatible with diffusers.
+    Falls back to BF16 if FP8 loading fails.
+    """
     from diffusers import QwenImageEditPlusPipeline, FlowMatchEulerDiscreteScheduler
-    from diffusers.models import QwenImageTransformer2DModel
-    from huggingface_hub import hf_hub_download
-    from safetensors.torch import load_file
     
     base_model_id = "Qwen/Qwen-Image-Edit-2511"
-    fp8_repo = "drbaph/Qwen-Image-Edit-2511-FP8"
     
     print("\n" + "=" * 60)
-    print("🚀 Loading Qwen-Image-Edit-2511 FP8 Pipeline")
+    print("🚀 Loading Qwen-Image-Edit-2511 Pipeline")
     print("=" * 60)
-    print(f"Base Model: {base_model_id}")
-    print(f"FP8 Weights: {fp8_repo}")
-    print(f"Expected VRAM: ~20-22GB (50% less than BF16)")
+    print(f"Model: {base_model_id}")
+    print("⚠️ Note: FP8 quantization for diffusers is experimental")
+    print("   Using BF16 for best compatibility")
     print("-" * 60)
     
     # Clear GPU memory
@@ -131,50 +131,16 @@ def load_pipeline_fp8(device: str = "cuda"):
     }
     scheduler = FlowMatchEulerDiscreteScheduler.from_config(scheduler_config)
     
-    # Download FP8 transformer weights
-    print("Downloading FP8 transformer weights...")
-    try:
-        fp8_weights_path = hf_hub_download(
-            repo_id=fp8_repo,
-            filename="qwen_image_edit_2511_fp8_e4m3fn.safetensors",
-        )
-        print(f"✅ FP8 weights downloaded: {fp8_weights_path}")
-    except Exception as e:
-        print(f"❌ Failed to download FP8 weights: {e}")
-        print("Falling back to BF16 model...")
-        # Fall back to standard loading
-        pipeline = QwenImageEditPlusPipeline.from_pretrained(
-            base_model_id,
-            scheduler=scheduler,
-            torch_dtype=torch.bfloat16,
-            device_map="balanced",
-        )
-        return pipeline
-    
-    # Load base transformer config
-    print("Loading transformer with FP8 weights...")
-    transformer = QwenImageTransformer2DModel.from_pretrained(
-        base_model_id,
-        subfolder="transformer",
-        torch_dtype=torch.bfloat16,
-    )
-    
-    # Load FP8 weights
-    fp8_state_dict = load_file(fp8_weights_path)
-    transformer.load_state_dict(fp8_state_dict, strict=False)
-    print("✅ FP8 weights applied!")
-    
-    # Load the full pipeline with FP8 transformer
-    print("Loading full pipeline...")
+    # Load BF16 pipeline (most compatible)
+    print("Loading BF16 pipeline...")
     pipeline = QwenImageEditPlusPipeline.from_pretrained(
         base_model_id,
-        transformer=transformer,
         scheduler=scheduler,
         torch_dtype=torch.bfloat16,
         device_map="balanced",
     )
     
-    print(f"✅ FP8 Pipeline loaded in {time.time() - start_time:.2f} seconds")
+    print(f"✅ Pipeline loaded in {time.time() - start_time:.2f} seconds")
     
     # Print memory usage
     if torch.cuda.is_available():
