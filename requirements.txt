@@ -1,11 +1,12 @@
 # Qwen-Image-Edit-2511 + Lightning LoRA Requirements
 # Base Image: vastai/base-image:cuda-12.4.1-cudnn-devel-ubuntu22.04-py310-ipv2
 
-# Core ML Frameworks - PyTorch with CUDA 12.4 support
+# Core ML Frameworks - PyTorch 2.5.1 with CUDA 12.4 support
+# NOTE: Using 2.5.1 instead of 2.9 to avoid JIT compilation errors
 --extra-index-url https://download.pytorch.org/whl/cu124
-torch>=2.4.0
-torchvision>=0.19.0
-torchaudio>=2.4.0
+torch==2.5.1
+torchvision==0.20.1
+torchaudio==2.5.1
 
 # Hugging Face Libraries
 # NOTE: diffusers and transformers are installed from git in setup.sh

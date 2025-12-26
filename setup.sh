@@ -22,10 +22,12 @@ echo ""
 echo "📦 Upgrading pip..."
 pip install --upgrade pip
 
-# Install PyTorch with CUDA 12.4 support
+# Install PyTorch 2.5.1 with CUDA 12.4 support (stable version compatible with diffusers)
+# Note: PyTorch 2.9 has JIT compilation issues with diffusers QwenImage models
 echo ""
-echo "🔧 Installing PyTorch with CUDA 12.4 support..."
-pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu124
+echo "🔧 Installing PyTorch 2.5.1 with CUDA 12.4 support..."
+echo "   (Using 2.5.1 instead of 2.9 to avoid JIT compilation errors)"
+pip install torch==2.5.1 torchvision==0.20.1 torchaudio==2.5.1 --index-url https://download.pytorch.org/whl/cu124
 
 # Install diffusers from git (required for QwenImageEditPlusPipeline)
 echo ""
