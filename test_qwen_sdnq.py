@@ -21,6 +21,17 @@ import sys
 import time
 
 import torch
+
+# Workaround for PyTorch 2.6 compatibility with sdnq
+# The accumulated_recompile_limit was moved from _dynamo to compiler config
+try:
+    import torch._dynamo.config as dynamo_config
+    if not hasattr(dynamo_config, 'accumulated_recompile_limit'):
+        # Create a fake attribute to prevent the error
+        dynamo_config.accumulated_recompile_limit = 8192
+except Exception:
+    pass
+
 from PIL import Image
 
 
