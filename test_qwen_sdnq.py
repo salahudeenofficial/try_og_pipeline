@@ -132,9 +132,18 @@ def load_pipeline_sdnq(device: str = "cuda"):
         )
         print("✅ INT8 MatMul enabled!")
     
-    # Enable CPU offload for memory efficiency
-    print("Enabling model CPU offload...")
-    pipeline.enable_model_cpu_offload()
+    # Check GPU memory and decide whether to use CPU offload
+    if torch.cuda.is_available():
+        total_memory = torch.cuda.get_device_properties(0).total_memory / (1024 ** 3)
+        
+        if total_memory >= 40:  # Large GPU (A100, H100, etc.)
+            print(f"Large GPU detected ({total_memory:.0f}GB), loading directly to CUDA...")
+            pipeline.to("cuda")
+        else:
+            print("Enabling model CPU offload for memory efficiency...")
+            pipeline.enable_model_cpu_offload()
+    else:
+        pipeline.enable_model_cpu_offload()
     
     print(f"✅ Pipeline loaded in {time.time() - start_time:.2f} seconds")
     
