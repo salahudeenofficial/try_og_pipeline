@@ -52,27 +52,27 @@ def check_cuda():
 
 def load_pipeline_dfloat11(cpu_offload: bool = False, 
                            cpu_offload_blocks: int = 20,
-                           no_pin_memory: bool = False,
-                           use_lora: bool = True):
-    """Load the DFloat11 compressed pipeline with optional Lightning LoRA."""
-    import math
-    from diffusers import QwenImageEditPlusPipeline, FlowMatchEulerDiscreteScheduler
+                           no_pin_memory: bool = False):
+    """
+    Load the DFloat11 compressed pipeline.
+    
+    NOTE: DFloat11 is NOT compatible with LoRA (they both modify model layers).
+    Use --no-lora mode (40 steps) for DFloat11 lossless compression.
+    For fast 4-step inference, use the main branch without DFloat11.
+    """
+    from diffusers import QwenImageEditPlusPipeline
     from dfloat11 import DFloat11Model
-    from huggingface_hub import hf_hub_download
     
     base_model_id = "Qwen/Qwen-Image-Edit-2509"
     df11_model_id = "DFloat11/Qwen-Image-Edit-2509-DF11"
-    lora_repo = "lightx2v/Qwen-Image-Lightning"
-    # Use the general Qwen-Image Lightning LoRA (works for both 2509 and base models)
-    lora_filename = "Qwen-Image-Lightning-4steps-V2.0-bf16.safetensors"
     
     print("\n" + "=" * 60)
     print("🚀 Loading Qwen-Image-Edit-2509 with DFloat11 Compression")
     print("=" * 60)
     print(f"Base Model: {base_model_id}")
     print(f"DFloat11 Weights: {df11_model_id}")
-    print(f"Lightning LoRA: {use_lora} (4-step mode)")
     print(f"Compression: 32% smaller, 100% lossless!")
+    print(f"Mode: 40 steps (DFloat11 is not compatible with LoRA)")
     print(f"CPU Offload: {cpu_offload}")
     print("-" * 60)
     
@@ -84,54 +84,14 @@ def load_pipeline_dfloat11(cpu_offload: bool = False,
     
     start_time = time.time()
     
-    # Scheduler config - use LoRA-specific config if using LoRA
-    if use_lora:
-        scheduler_config = {
-            "base_image_seq_len": 256,
-            "base_shift": math.log(3),  # shift=3 for distillation
-            "invert_sigmas": False,
-            "max_image_seq_len": 8192,
-            "max_shift": math.log(3),
-            "num_train_timesteps": 1000,
-            "shift": 1.0,
-            "shift_terminal": None,
-            "stochastic_sampling": False,
-            "time_shift_type": "exponential",
-            "use_beta_sigmas": False,
-            "use_dynamic_shifting": True,
-            "use_exponential_sigmas": False,
-            "use_karras_sigmas": False,
-        }
-        scheduler = FlowMatchEulerDiscreteScheduler.from_config(scheduler_config)
-        
-        # Load the base pipeline with custom scheduler
-        print("Loading base pipeline with LoRA scheduler...")
-        pipeline = QwenImageEditPlusPipeline.from_pretrained(
-            base_model_id,
-            scheduler=scheduler,
-            torch_dtype=torch.bfloat16,
-        )
-    else:
-        # Load the base pipeline
-        print("Loading base pipeline...")
-        pipeline = QwenImageEditPlusPipeline.from_pretrained(
-            base_model_id,
-            torch_dtype=torch.bfloat16,
-        )
+    # Load the base pipeline
+    print("Loading base pipeline...")
+    pipeline = QwenImageEditPlusPipeline.from_pretrained(
+        base_model_id,
+        torch_dtype=torch.bfloat16,
+    )
     
-    # IMPORTANT: Load LoRA BEFORE DFloat11 compression!
-    # DFloat11 modifies Linear layers which breaks PEFT's LoRA loading
-    if use_lora:
-        print("Downloading Lightning LoRA (4-step)...")
-        lora_path = hf_hub_download(
-            repo_id=lora_repo,
-            filename=lora_filename,
-        )
-        print(f"Loading LoRA from: {lora_path}")
-        pipeline.load_lora_weights(lora_path)
-        print("✅ Lightning LoRA loaded! (4-step mode enabled)")
-    
-    # Apply DFloat11 compression to transformer AFTER LoRA is loaded
+    # Apply DFloat11 compression to transformer
     print("Applying DFloat11 compression to transformer...")
     DFloat11Model.from_pretrained(
         df11_model_id,
@@ -219,18 +179,17 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 This uses DFloat11 LOSSLESS compression - 32% smaller, 100% accuracy!
-By default, uses 4-step Lightning LoRA for ~10x faster inference.
+
+NOTE: DFloat11 is NOT compatible with Lightning LoRA.
+For fast 4-step inference, use the main branch instead.
 
 Install requirements:
     pip install -U dfloat11[cuda12]
     pip install git+https://github.com/huggingface/diffusers
 
 Examples:
-    # With Lightning LoRA (4 steps, fast!)
+    # Standard (40 steps, lossless quality)
     python test_qwen_dfloat11.py --person person.jpg --cloth cloth.png
-    
-    # Without LoRA (40 steps, slower but original model)
-    python test_qwen_dfloat11.py --person person.jpg --cloth cloth.png --no-lora
     
     # With CPU offload (24GB VRAM required)
     python test_qwen_dfloat11.py --person person.jpg --cloth cloth.png --cpu-offload
@@ -244,14 +203,12 @@ Examples:
                         help="Output path")
     parser.add_argument("--prompt", type=str, default=None,
                         help="Custom prompt (uses VTON prompt by default)")
-    parser.add_argument("--steps", type=int, default=None,
-                        help="Inference steps (default: 4 with LoRA, 40 without)")
-    parser.add_argument("--cfg", type=float, default=None,
-                        help="True CFG scale (default: 1.0 with LoRA, 4.0 without)")
+    parser.add_argument("--steps", type=int, default=40,
+                        help="Inference steps (default: 40 for base model)")
+    parser.add_argument("--cfg", type=float, default=4.0,
+                        help="True CFG scale (default: 4.0 for base model)")
     parser.add_argument("--seed", type=int, default=42,
                         help="Random seed")
-    parser.add_argument("--no-lora", action="store_true",
-                        help="Disable Lightning LoRA (use 40-step base model)")
     parser.add_argument("--cpu-offload", action="store_true",
                         help="Enable CPU offloading (for 24GB GPUs)")
     parser.add_argument("--cpu-offload-blocks", type=int, default=20,
@@ -260,15 +217,6 @@ Examples:
                         help="Disable memory pinning (most memory efficient)")
     
     args = parser.parse_args()
-    
-    # Determine if using LoRA
-    use_lora = not args.no_lora
-    
-    # Set defaults based on LoRA usage
-    if args.steps is None:
-        args.steps = 4 if use_lora else 40
-    if args.cfg is None:
-        args.cfg = 1.0 if use_lora else 4.0
     
     # Default VTON prompt
     if args.prompt is None:
@@ -282,9 +230,8 @@ Examples:
     
     print("\n" + "👗" * 30)
     print("   QWEN VIRTUAL TRY-ON (DFloat11)")
-    if use_lora:
-        print("   + Lightning LoRA (4-step FAST mode!)")
     print("   Lossless Compression - 100% Quality!")
+    print("   (40 steps - DFloat11 is not compatible with LoRA)")
     print("👗" * 30 + "\n")
     
     # Check CUDA
@@ -310,7 +257,6 @@ Examples:
         cpu_offload=args.cpu_offload,
         cpu_offload_blocks=args.cpu_offload_blocks,
         no_pin_memory=args.no_pin_memory,
-        use_lora=use_lora,
     )
     
     # Run inference with both images
@@ -326,7 +272,7 @@ Examples:
     
     print("\n" + "✅" * 30)
     print("   VIRTUAL TRY-ON COMPLETED!")
-    print(f"   Using DFloat11 + {'Lightning LoRA (4-step)' if use_lora else 'Base Model (40-step)'}")
+    print("   Using DFloat11 Lossless Compression (40-step)")
     print("✅" * 30 + "\n")
     
     return 0
