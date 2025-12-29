@@ -92,30 +92,29 @@ def check_cuda():
     return True
 
 
-def load_pipeline_optimized(device: str = "cuda"):
-    """Load the optimized pipeline with practical speed optimizations.
+def load_pipeline_optimized(device: str = "cuda", lora_dir: str = "./lora_weights"):
+    """Load the optimized pipeline with TF32 and cuDNN optimizations.
     
-    Note: torch.compile doesn't work with QwenImageTransformer due to dynamic
-    position embeddings. We focus on other optimizations instead.
+    Uses same LoRA as main branch for best performance.
     """
+    import os
     from diffusers import QwenImageEditPlusPipeline, FlowMatchEulerDiscreteScheduler
     from huggingface_hub import hf_hub_download
     
     model_id = "Qwen/Qwen-Image-Edit-2511"
-    lora_repo = "lightx2v/Qwen-Image-Lightning"
-    lora_filename = "Qwen-Image-Lightning-4steps-V2.0-bf16.safetensors"
+    lora_repo = "lightx2v/Qwen-Image-Edit-2511-Lightning"
+    lora_filename = "Qwen-Image-Edit-2511-Lightning-4steps-V1.0-bf16.safetensors"
     
     print("\n" + "=" * 60)
     print("🚀 Loading OPTIMIZED Qwen-Image-Edit-2511 Pipeline")
     print("=" * 60)
     print(f"Model: {model_id}")
-    print(f"Lightning LoRA: {lora_repo}")
+    print(f"Lightning LoRA: {lora_repo}/{lora_filename}")
     print("-" * 60)
     
     # Clear GPU memory
     if torch.cuda.is_available():
         torch.cuda.empty_cache()
-        import gc
         gc.collect()
     
     start_time = time.time()
@@ -139,36 +138,30 @@ def load_pipeline_optimized(device: str = "cuda"):
     }
     scheduler = FlowMatchEulerDiscreteScheduler.from_config(scheduler_config)
     
-    # GPU memory check - direct .to() loading needs ~50GB due to copy overhead
-    gpu_memory = torch.cuda.get_device_properties(0).total_memory / (1024 ** 3)
-    print(f"GPU Memory: {gpu_memory:.2f} GB")
+    # Load pipeline with device_map for memory efficiency
+    print("Loading pipeline...")
+    pipeline = QwenImageEditPlusPipeline.from_pretrained(
+        model_id,
+        scheduler=scheduler,
+        torch_dtype=torch.bfloat16,
+        device_map="balanced",
+    )
     
-    if gpu_memory >= 50:  # A100 80GB, H100, etc.
-        print("Using direct CUDA loading...")
-        pipeline = QwenImageEditPlusPipeline.from_pretrained(
-            model_id,
-            scheduler=scheduler,
-            torch_dtype=torch.bfloat16,
-        ).to(device)
-    else:
-        # For GPUs 40-50GB, use device_map to load directly to GPU (no CPU->GPU copy)
-        print("Using device_map='balanced' (loads directly to GPU, no copy overhead)...")
-        pipeline = QwenImageEditPlusPipeline.from_pretrained(
-            model_id,
-            scheduler=scheduler,
-            torch_dtype=torch.bfloat16,
-            device_map="balanced",
+    # Download and load LoRA (same as main branch)
+    lora_path = os.path.join(lora_dir, lora_filename)
+    if not os.path.exists(lora_path):
+        print("📥 Downloading LoRA weights...")
+        os.makedirs(lora_dir, exist_ok=True)
+        hf_hub_download(
+            repo_id=lora_repo,
+            filename=lora_filename,
+            local_dir=lora_dir,
+            local_dir_use_symlinks=False,
         )
     
-    # Load Lightning LoRA
-    print("Downloading Lightning LoRA (4-step)...")
-    lora_path = hf_hub_download(
-        repo_id=lora_repo,
-        filename=lora_filename,
-    )
     print(f"Loading LoRA from: {lora_path}")
     pipeline.load_lora_weights(lora_path)
-    print("✅ Lightning LoRA loaded!")
+    print("✅ LoRA loaded!")
     
     print(f"✅ Pipeline loaded in {time.time() - start_time:.2f} seconds")
     
