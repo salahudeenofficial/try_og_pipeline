@@ -206,18 +206,10 @@ def run_inference(pipeline,
         "num_inference_steps": num_inference_steps,
     }
     
-    # Synchronize CUDA for accurate timing
-    if torch.cuda.is_available():
-        torch.cuda.synchronize()
-    
     start_time = time.time()
     
     with torch.inference_mode():
         output = pipeline(**inputs)
-    
-    # Synchronize again for accurate timing
-    if torch.cuda.is_available():
-        torch.cuda.synchronize()
     
     inference_time = time.time() - start_time
     print(f"\n✅ Inference completed in {inference_time:.2f} seconds")
