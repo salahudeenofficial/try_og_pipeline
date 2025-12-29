@@ -119,7 +119,19 @@ def load_pipeline_dfloat11(cpu_offload: bool = False,
             torch_dtype=torch.bfloat16,
         )
     
-    # Apply DFloat11 compression to transformer
+    # IMPORTANT: Load LoRA BEFORE DFloat11 compression!
+    # DFloat11 modifies Linear layers which breaks PEFT's LoRA loading
+    if use_lora:
+        print("Downloading Lightning LoRA (4-step)...")
+        lora_path = hf_hub_download(
+            repo_id=lora_repo,
+            filename=lora_filename,
+        )
+        print(f"Loading LoRA from: {lora_path}")
+        pipeline.load_lora_weights(lora_path)
+        print("✅ Lightning LoRA loaded! (4-step mode enabled)")
+    
+    # Apply DFloat11 compression to transformer AFTER LoRA is loaded
     print("Applying DFloat11 compression to transformer...")
     DFloat11Model.from_pretrained(
         df11_model_id,
@@ -130,17 +142,6 @@ def load_pipeline_dfloat11(cpu_offload: bool = False,
         pin_memory=not no_pin_memory,
     )
     print("✅ DFloat11 compression applied!")
-    
-    # Load Lightning LoRA for 4-step inference
-    if use_lora:
-        print("Downloading Lightning LoRA (4-step)...")
-        lora_path = hf_hub_download(
-            repo_id=lora_repo,
-            filename=lora_filename,
-        )
-        print(f"Loading LoRA from: {lora_path}")
-        pipeline.load_lora_weights(lora_path)
-        print("✅ Lightning LoRA loaded! (4-step mode enabled)")
     
     # Enable CPU offload for memory efficiency
     pipeline.enable_model_cpu_offload()
