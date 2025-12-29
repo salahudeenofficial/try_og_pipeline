@@ -139,16 +139,26 @@ def load_pipeline_optimized(device: str = "cuda"):
     }
     scheduler = FlowMatchEulerDiscreteScheduler.from_config(scheduler_config)
     
-    # Always use direct CUDA loading (no CPU offload)
+    # GPU memory check - direct .to() loading needs ~50GB due to copy overhead
     gpu_memory = torch.cuda.get_device_properties(0).total_memory / (1024 ** 3)
     print(f"GPU Memory: {gpu_memory:.2f} GB")
-    print("Using direct CUDA loading (no CPU offload)...")
     
-    pipeline = QwenImageEditPlusPipeline.from_pretrained(
-        model_id,
-        scheduler=scheduler,
-        torch_dtype=torch.bfloat16,
-    ).to(device)
+    if gpu_memory >= 50:  # A100 80GB, H100, etc.
+        print("Using direct CUDA loading...")
+        pipeline = QwenImageEditPlusPipeline.from_pretrained(
+            model_id,
+            scheduler=scheduler,
+            torch_dtype=torch.bfloat16,
+        ).to(device)
+    else:
+        # For GPUs 40-50GB, use device_map to load directly to GPU (no CPU->GPU copy)
+        print("Using device_map='auto' (loads directly to GPU, no copy overhead)...")
+        pipeline = QwenImageEditPlusPipeline.from_pretrained(
+            model_id,
+            scheduler=scheduler,
+            torch_dtype=torch.bfloat16,
+            device_map="auto",
+        )
     
     # Load Lightning LoRA
     print("Downloading Lightning LoRA (4-step)...")
