@@ -63,7 +63,8 @@ def load_pipeline_dfloat11(cpu_offload: bool = False,
     base_model_id = "Qwen/Qwen-Image-Edit-2509"
     df11_model_id = "DFloat11/Qwen-Image-Edit-2509-DF11"
     lora_repo = "lightx2v/Qwen-Image-Lightning"
-    lora_filename = "Qwen-Image-Edit-2509-Lightning-4steps-V1.0-bf16.safetensors"
+    # Use the general Qwen-Image Lightning LoRA (works for both 2509 and base models)
+    lora_filename = "Qwen-Image-Lightning-4steps-V2.0-bf16.safetensors"
     
     print("\n" + "=" * 60)
     print("🚀 Loading Qwen-Image-Edit-2509 with DFloat11 Compression")
