@@ -147,11 +147,14 @@ def load_pipeline_optimized(device: str = "cuda", use_compile: bool = True):
     # Note: QwenImageTransformer has dynamic position embeddings that may not compile well
     if use_compile:
         print("Applying torch.compile to transformer...")
+        # Suppress dynamo errors and fall back to eager if needed
         try:
-            # Suppress dynamo errors and fall back to eager if needed
-            import torch._dynamo
-            torch._dynamo.config.suppress_errors = True
-            
+            import torch._dynamo as dynamo
+            dynamo.config.suppress_errors = True
+        except Exception:
+            pass
+        
+        try:
             # Use "default" mode which is more compatible than reduce-overhead
             pipeline.transformer = torch.compile(
                 pipeline.transformer,
