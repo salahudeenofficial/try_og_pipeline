@@ -144,16 +144,22 @@ def load_pipeline_optimized(device: str = "cuda", use_compile: bool = True):
     print("✅ Lightning LoRA loaded!")
     
     # Apply torch.compile to transformer for faster inference
+    # Note: QwenImageTransformer has dynamic position embeddings that may not compile well
     if use_compile:
-        print("Applying torch.compile to transformer (this may take a minute on first run)...")
+        print("Applying torch.compile to transformer...")
         try:
-            # Use "reduce-overhead" mode for best inference performance
+            # Suppress dynamo errors and fall back to eager if needed
+            import torch._dynamo
+            torch._dynamo.config.suppress_errors = True
+            
+            # Use "default" mode which is more compatible than reduce-overhead
             pipeline.transformer = torch.compile(
                 pipeline.transformer,
-                mode="reduce-overhead",  # Best for inference
+                mode="default",  # More compatible than reduce-overhead
                 fullgraph=False,  # Allow graph breaks for compatibility
+                dynamic=True,  # Enable dynamic shapes
             )
-            print("✅ torch.compile applied successfully!")
+            print("✅ torch.compile applied (with fallback to eager on errors)")
         except Exception as e:
             print(f"⚠️ torch.compile failed, using uncompiled model: {e}")
     
