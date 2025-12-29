@@ -152,12 +152,12 @@ def load_pipeline_optimized(device: str = "cuda"):
         ).to(device)
     else:
         # For GPUs 40-50GB, use device_map to load directly to GPU (no CPU->GPU copy)
-        print("Using device_map='auto' (loads directly to GPU, no copy overhead)...")
+        print("Using device_map='balanced' (loads directly to GPU, no copy overhead)...")
         pipeline = QwenImageEditPlusPipeline.from_pretrained(
             model_id,
             scheduler=scheduler,
             torch_dtype=torch.bfloat16,
-            device_map="auto",
+            device_map="balanced",
         )
     
     # Load Lightning LoRA
