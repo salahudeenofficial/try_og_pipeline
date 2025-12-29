@@ -15,6 +15,7 @@ Expected: ~8-12 seconds per inference vs ~16 seconds baseline
 """
 
 import argparse
+import gc
 import math
 import os
 import sys
@@ -22,6 +23,17 @@ import time
 
 import torch
 from PIL import Image
+
+
+def clear_gpu_memory():
+    """Aggressively clear GPU memory from previous runs."""
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
+        torch.cuda.reset_peak_memory_stats()
+        gc.collect()
+        # Force synchronization
+        torch.cuda.synchronize()
+        print("🧹 GPU memory cleared")
 
 
 def setup_optimizations():
@@ -270,6 +282,9 @@ Examples:
     print("   QWEN VIRTUAL TRY-ON (OPTIMIZED)")
     print("   Lightning LoRA + TF32 + cuDNN")
     print("🚀" * 30 + "\n")
+    
+    # Clear any leftover GPU memory from previous runs
+    clear_gpu_memory()
     
     # Setup optimizations first
     setup_optimizations()
