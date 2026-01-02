@@ -26,6 +26,9 @@ from pathlib import Path
 import torch
 from PIL import Image
 
+# Set CUDA arch to avoid compilation warnings
+os.environ.setdefault('TORCH_CUDA_ARCH_LIST', '8.9')
+
 
 # Virtual Try-On Prompts
 VTON_PROMPT_CN = """将图片 1 中的绿色遮罩区域仅用于判断服装属于上半身或下半身，不要将服装限制在遮罩范围内。
@@ -121,6 +124,32 @@ def find_fp8_path():
     return None
 
 
+def calculate_720p_resolution(person_image_path: str):
+    """
+    Calculate 720p output resolution maintaining input aspect ratio.
+    720p = 720 pixels on the shorter side.
+    """
+    img = Image.open(person_image_path)
+    width, height = img.size
+    aspect_ratio = width / height
+    
+    # For 720p: shorter side = 720
+    if width >= height:
+        # Landscape or square: height = 720
+        target_height = 720
+        target_width = int(720 * aspect_ratio)
+    else:
+        # Portrait: width = 720
+        target_width = 720
+        target_height = int(720 / aspect_ratio)
+    
+    # Ensure dimensions are divisible by 16 (required for diffusion models)
+    target_width = (target_width // 16) * 16
+    target_height = (target_height // 16) * 16
+    
+    return target_width, target_height, aspect_ratio
+
+
 def run_lightx2v_vton(
     person_image_path: str,
     cloth_image_path: str,
@@ -130,6 +159,8 @@ def run_lightx2v_vton(
     prompt: str = None,
     seed: int = 42,
     steps: int = 4,
+    target_width: int = None,
+    target_height: int = None,
 ):
     """
     Run Virtual Try-On using LightX2V framework.
@@ -143,14 +174,22 @@ def run_lightx2v_vton(
         prompt: VTON prompt (uses Chinese prompt by default)
         seed: Random seed
         steps: Inference steps (4 for distilled, 40 for base)
+        target_width: Target output width (auto-calculated if None)
+        target_height: Target output height (auto-calculated if None)
     """
     from lightx2v import LightX2VPipeline
+    
+    # Calculate 720p resolution if not specified
+    if target_width is None or target_height is None:
+        target_width, target_height, aspect_ratio = calculate_720p_resolution(person_image_path)
+        print(f"\n📐 Auto-calculated 720p resolution: {target_width}x{target_height} (AR: {aspect_ratio:.2f})")
     
     print("\n" + "=" * 60)
     print("🚀 Initializing LightX2V Pipeline")
     print("=" * 60)
     print(f"Mode: {mode}")
     print(f"Offloading: {'✅ Enabled' if enable_offload else '❌ Disabled'}")
+    print(f"Output Resolution: {target_width}x{target_height}")
     print("-" * 60)
     
     # Find model path
@@ -243,13 +282,15 @@ def run_lightx2v_vton(
         print(f"\n🔧 Flash Attention unavailable ({type(e).__name__}), using PyTorch SDPA")
         attn_mode = "torch_sdpa"
     
-    # Create generator
-    print(f"\n🔧 Creating generator (steps={steps})...")
+    # Create generator with resolution settings
+    print(f"\n🔧 Creating generator (steps={steps}, resolution={target_width}x{target_height})...")
     pipe.create_generator(
         attn_mode=attn_mode,
-        auto_resize=True,
+        auto_resize=False,  # Disable auto-resize, use our calculated resolution
         infer_steps=steps,
         guidance_scale=1.0,
+        target_width=target_width,
+        target_height=target_height,
     )
     
     init_time = time.time() - start_time
@@ -288,7 +329,7 @@ def run_lightx2v_vton(
     print("\n🔄 Starting inference...")
     infer_start = time.time()
     
-    # Generate
+    # Generate with CUDA generator for better performance
     pipe.generate(
         seed=seed,
         image_path=image_paths,
@@ -406,6 +447,13 @@ Examples:
                         help="Prompt language")
     parser.add_argument("--no-comparison", action="store_true",
                         help="Skip creating comparison image")
+    parser.add_argument("--width", type=int, default=None,
+                        help="Target output width (default: auto-calculate for 720p)")
+    parser.add_argument("--height", type=int, default=None,
+                        help="Target output height (default: auto-calculate for 720p)")
+    parser.add_argument("--resolution", type=str, default="720p",
+                        choices=["480p", "720p", "1080p", "auto"],
+                        help="Target resolution preset (default: 720p)")
     
     args = parser.parse_args()
     
@@ -432,6 +480,34 @@ Examples:
     # Select prompt
     prompt = VTON_PROMPT_CN if args.prompt_lang == "cn" else VTON_PROMPT_EN
     
+    # Calculate resolution
+    target_width = args.width
+    target_height = args.height
+    
+    if target_width is None or target_height is None:
+        # Auto-calculate based on resolution preset
+        img = Image.open(args.person)
+        w, h = img.size
+        aspect_ratio = w / h
+        
+        # Resolution presets (shorter side)
+        res_map = {"480p": 480, "720p": 720, "1080p": 1080, "auto": None}
+        target_short = res_map.get(args.resolution)
+        
+        if target_short and args.resolution != "auto":
+            if w >= h:
+                target_height = target_short
+                target_width = int(target_short * aspect_ratio)
+            else:
+                target_width = target_short
+                target_height = int(target_short / aspect_ratio)
+            
+            # Ensure divisible by 16
+            target_width = (target_width // 16) * 16
+            target_height = (target_height // 16) * 16
+        
+        print(f"📐 Resolution: {args.resolution} -> {target_width}x{target_height}")
+    
     # Run inference
     result_path, inference_time = run_lightx2v_vton(
         person_image_path=args.person,
@@ -441,6 +517,8 @@ Examples:
         enable_offload=args.offload,
         prompt=prompt,
         seed=args.seed,
+        target_width=target_width,
+        target_height=target_height,
     )
     
     # Create comparison
