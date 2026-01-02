@@ -1,224 +1,110 @@
-# Qwen-Image-Edit-2511 with Lightning LoRA ⚡
+# LightX2V Qwen-Image-Edit-2511 with FP8 Quantization ⚡
 
-Run **Qwen-Image-Edit-2511** with the **4-Step Lightning LoRA** for ~10x faster inference on Vast.ai GPU instances.
+High-performance Virtual Try-On using **LightX2V** framework with **Qwen-Image-Edit-2511** model.
 
-## 📦 FP8 Quantization Options
+## 🚀 Performance
 
-This repository includes several FP8 quantization approaches for reduced VRAM usage:
+| Mode | Steps | Time (H100) | VRAM | Speedup |
+|------|-------|-------------|------|---------|
+| **FP8 + Distill** | 4 | ~3-4s | ~15-20GB | **42x** |
+| **BF16 + LoRA** | 4 | ~4-6s | ~25-30GB | 10x |
+| **Base Model** | 40 | ~40-60s | ~35GB | 1x |
 
-### Option 1: FP8 Layerwise Casting (Recommended)
-```bash
-python test_qwen_edit_fp8_layerwise.py --mode layerwise --input your_image.png
-```
-- Stores weights in FP8, computes in BF16
-- ~50% VRAM reduction (15-20GB instead of 25-35GB)
-- Works on most GPUs
+## 📦 Quick Start
 
-### Option 2: TorchAO FP8 (RTX 4000+/A100/H100)
-```bash
-python test_qwen_edit_fp8_layerwise.py --mode torchao --input your_image.png
-```
-- Hardware-accelerated FP8 quantization
-- Requires GPU with compute capability ≥ 8.9
-- Best speed/memory/quality trade-off
-
-### Option 3: 1038lab FP8 Model (Pre-quantized)
-```python
-from diffusers import QwenImageEditPipeline
-pipe = QwenImageEditPipeline.from_pretrained(
-    "1038lab/Qwen-Image-Edit-2511-FP8", torch_dtype=torch.bfloat16
-).to("cuda")
-```
-
-### ComfyUI FP8 Weights Compatibility
-⚠️ **Note**: ComfyUI FP8 weights (e.g., `qwen_image_edit_2511_fp8_e4m3fn_scaled.safetensors`) have different naming conventions and aren't directly compatible with diffusers. Use the converter script:
-```bash
-python convert_comfy_fp8.py --input comfy_weights.safetensors --analyze-only
-```
-
-## 🚀 Key Features
-
-| Feature | Description |
-|---------|-------------|
-| **Base Model** | [Qwen/Qwen-Image-Edit-2511](https://huggingface.co/Qwen/Qwen-Image-Edit-2511) - Latest image editing model |
-| **Lightning LoRA** | [lightx2v/Qwen-Image-Edit-2511-Lightning](https://huggingface.co/lightx2v/Qwen-Image-Edit-2511-Lightning) |
-| **Speed** | 4 steps vs 40 steps = ~10x faster! |
-| **Quality** | Maintains editing quality with step distillation |
-
-## 🖥️ Recommended Instance Configuration
-
-| Parameter | Value |
-|-----------|-------|
-| **Base Image** | `vastai/base-image:cuda-12.4.1-cudnn-devel-ubuntu22.04-py310-ipv2` |
-| **GPU** | NVIDIA L40S (45GB VRAM) or similar |
-| **Disk Space** | 100GB+ (model is ~60GB + LoRA) |
-| **System RAM** | 64GB+ recommended |
-| **Python** | 3.10 |
-| **CUDA** | 12.4.1+ |
-
-## 🚀 Quick Start
-
-### 1. Clone the Repository
+### 1. Setup
 
 ```bash
+# Clone the repo
 git clone https://github.com/salahudeenofficial/try_og_pipeline.git
 cd try_og_pipeline
+git checkout lightx2v
+
+# Run setup (installs LightX2V, downloads models)
+chmod +x setup_lightx2v.sh
+./setup_lightx2v.sh
 ```
 
-### 2. Run Setup
+### 2. Run Virtual Try-On
 
 ```bash
-chmod +x setup.sh
-./setup.sh
+# FP8 mode (fastest, recommended for production)
+python test_lightx2v_vton.py --mode fp8 --person person.jpg --cloth cloth.png
+
+# LoRA mode (BF16 + 4-step distillation)
+python test_lightx2v_vton.py --mode lora --person person.jpg --cloth cloth.png
+
+# With CPU offloading (for low VRAM GPUs like RTX 3090)
+python test_lightx2v_vton.py --mode fp8 --offload
 ```
 
-This will:
-- Install PyTorch with CUDA 12.4 support
-- Install diffusers and transformers from GitHub (latest)
-- Install all other dependencies
-- Verify the installation
+## 🔧 Models
 
-### 3. Run a Test (with 4-Step Lightning LoRA ⚡)
+### Required Downloads
 
-**Basic test with sample image:**
-```bash
-python test_qwen_edit.py
-```
-
-**With your own image:**
-```bash
-python test_qwen_edit.py \
-    --input your_image.png \
-    --prompt "Transform into a watercolor painting"
-```
-
-**Multi-image editing (2-3 images):**
-```bash
-python test_qwen_edit.py \
-    --input person1.png person2.png \
-    --prompt "Both people are standing together in a beautiful garden"
-```
-
-### 4. Run with Base Model (no LoRA, slower but potentially higher quality)
+All models are downloaded automatically by `setup_lightx2v.sh`. Manual download:
 
 ```bash
-python test_qwen_edit.py --no-lora --steps 40 --cfg 4.0
+# Base model (~50GB)
+huggingface-cli download Qwen/Qwen-Image-Edit-2511 --local-dir models/Qwen-Image-Edit-2511
+
+# Lightning models (LoRA + FP8)
+huggingface-cli download lightx2v/Qwen-Image-Edit-2511-Lightning --local-dir models/Qwen-Image-Edit-2511-Lightning
 ```
 
-## 📋 Command Line Options
+### Model Files
+
+| File | Size | Description |
+|------|------|-------------|
+| `Qwen-Image-Edit-2511-Lightning-4steps-V1.0-bf16.safetensors` | ~850MB | 4-step LoRA for diffusers |
+| `Qwen-Image-Edit-2511-Lightning-4steps-V1.0-fp32.safetensors` | ~1.7GB | 4-step LoRA (full precision) |
+| `qwen_image_edit_2511_fp8_e4m3fn_scaled_lightning.safetensors` | ~10GB | FP8 base + distillation |
+
+## 🎯 Command Options
 
 | Option | Description | Default |
 |--------|-------------|---------|
-| `--input`, `-i` | Path to input image(s) | Downloads sample |
-| `--prompt`, `-p` | Edit prompt | "Transform into oil painting..." |
-| `--output`, `-o` | Output path | `output_image.png` |
-| `--steps` | Inference steps | 4 (LoRA) / 40 (base) |
-| `--cfg` | True CFG scale | 1.0 (LoRA) / 4.0 (base) |
+| `--mode` | `fp8`, `lora`, or `base` | `lora` |
+| `--person` | Person image path | `person.jpg` |
+| `--cloth` | Cloth image path | `cloth.png` |
+| `--output` | Output path | `outputs/vton_lightx2v_result.png` |
+| `--offload` | Enable CPU offloading | False |
 | `--seed` | Random seed | 42 |
-| `--no-lora` | Use base model | False |
-| `--lora-dir` | LoRA weights directory | `./lora_weights` |
-| `--skip-cuda-check` | Skip CUDA check | False |
+| `--prompt-lang` | `cn` or `en` | `cn` |
 
-## 🎨 Example Prompts
+## 📊 Memory Requirements
 
-**Style Transfer:**
-- "Transform this into a beautiful oil painting"
-- "Make this look like a pencil sketch"
-- "Convert to anime style with vibrant colors"
+| Mode | Min VRAM | Recommended | Notes |
+|------|----------|-------------|-------|
+| **FP8** | 16GB | 24GB | Best for RTX 4090, A100 |
+| **FP8 + Offload** | 8GB | 16GB | For RTX 3080/3090 |
+| **LoRA** | 24GB | 32GB | Standard mode |
+| **Base** | 32GB | 48GB | Full precision, 40 steps |
 
-**Lighting Effects:**
-- "Add dramatic sunset lighting"
-- "Create a cinematic night scene with neon lights"
-- "Add soft studio lighting"
+## 🔗 References
 
-**Scene Editing:**
-- "Place the person in a coffee shop"
-- "Change the background to a beach at sunset"
-- "Add snow to the scene"
+- [LightX2V GitHub](https://github.com/ModelTC/LightX2V)
+- [Qwen-Image-Lightning GitHub](https://github.com/ModelTC/Qwen-Image-Lightning)
+- [Qwen-Image-Edit-2511 Model](https://huggingface.co/Qwen/Qwen-Image-Edit-2511)
+- [Lightning Models](https://huggingface.co/lightx2v/Qwen-Image-Edit-2511-Lightning)
 
-**Person Editing:**
-- "Make the person wear a red dress"
-- "Change the hairstyle to curly blonde"
-- "Add sunglasses and a hat"
-
-**Multi-Image (2-3 images):**
-- "The two people are shaking hands in an office"
-- "Place the product next to the person"
-- "Combine these images into one scene"
-
-## 📊 Expected Performance
-
-### With 4-Step Lightning LoRA ⚡
-| Metric | Expected Value |
-|--------|----------------|
-| **Model Load Time** | 2-5 minutes (first run) |
-| **Inference Time** | ~3-8 seconds |
-| **VRAM Usage** | ~25-35GB |
-| **Speed Improvement** | ~10x faster |
-
-### With Base Model (40 steps)
-| Metric | Expected Value |
-|--------|----------------|
-| **Model Load Time** | 2-5 minutes (first run) |
-| **Inference Time** | ~30-60 seconds |
-| **VRAM Usage** | ~25-35GB |
-
-## 🔧 Troubleshooting
-
-### Out of Memory (OOM)
-If you get OOM errors, try:
-```bash
-# Use fewer steps
-python test_qwen_edit.py --steps 2
-
-# Or use smaller input images (resize before running)
-```
-
-### LoRA Download Failed
-Manually download from: https://huggingface.co/lightx2v/Qwen-Image-Edit-2511-Lightning
-```bash
-pip install "huggingface_hub[cli]"
-huggingface-cli download lightx2v/Qwen-Image-Edit-2511-Lightning \
-    --local-dir ./lora_weights
-```
-
-### Pipeline Not Found
-Ensure diffusers is installed from git:
-```bash
-pip install git+https://github.com/huggingface/diffusers
-```
-
-### CUDA Errors
-```bash
-python -c "import torch; print(f'CUDA: {torch.cuda.is_available()}')"
-nvidia-smi
-```
-
-## 📁 Project Structure
+## 📁 Directory Structure
 
 ```
 try_og_pipeline/
-├── README.md              # This file
-├── requirements.txt       # Python dependencies
-├── setup.sh              # Setup script (run first)
-├── test_qwen_edit.py     # Main test script
-├── lora_weights/         # LoRA weights (downloaded automatically)
-│   └── Qwen-Image-Edit-2511-Lightning-4steps-V1.0-bf16.safetensors
-└── output_image.png      # Generated output
+├── setup_lightx2v.sh          # Setup script
+├── test_lightx2v_vton.py      # Main VTON test script
+├── person.jpg                 # Test person image
+├── cloth.png                  # Test cloth image
+├── models/
+│   ├── Qwen-Image-Edit-2511/              # Base model
+│   └── Qwen-Image-Edit-2511-Lightning/    # LoRA + FP8
+├── outputs/                   # Generated images
+└── LightX2V/                  # LightX2V framework
 ```
-
-## 📚 References
-
-- [Qwen-Image-Edit-2511 on Hugging Face](https://huggingface.co/Qwen/Qwen-Image-Edit-2511)
-- [Lightning LoRA on Hugging Face](https://huggingface.co/lightx2v/Qwen-Image-Edit-2511-Lightning)
-- [Qwen-Image-Lightning GitHub](https://github.com/ModelTC/Qwen-Image-Lightning)
-- [Diffusers Documentation](https://huggingface.co/docs/diffusers)
-- [Vast.ai GPU Instances](https://vast.ai/)
 
 ## 📄 License
 
-This code is provided for testing purposes. 
-- Qwen-Image-Edit-2511 is licensed under Apache 2.0
-- Lightning LoRA follows the base model license
-
-Please refer to the respective model cards for full license details.
+- Qwen-Image-Edit-2511: Apache 2.0
+- LightX2V: Apache 2.0
+- Lightning LoRA: Same as base model

@@ -1,5 +1,5 @@
-# Qwen-Image-Edit-2511 + Lightning LoRA Requirements
-# Base Image: vastai/base-image:cuda-12.4.1-cudnn-devel-ubuntu22.04-py310-ipv2
+# LightX2V Qwen-Image-Edit-2511 Requirements
+# ==========================================
 
 # Core ML Frameworks - PyTorch 2.6.0 with CUDA 12.4 support
 --extra-index-url https://download.pytorch.org/whl/cu124
@@ -7,13 +7,14 @@ torch==2.6.0
 torchvision==0.21.0
 torchaudio==2.6.0
 
+# LightX2V is installed from source via setup_lightx2v.sh
+# pip install -e LightX2V/
+
 # Hugging Face Libraries
-# NOTE: diffusers is installed from git in setup.sh for QwenImageEditPlusPipeline support
-# pip install git+https://github.com/huggingface/diffusers
 transformers>=4.51.3
 accelerate>=0.30.0
 safetensors>=0.4.0
-peft>=0.10.0  # Required for LoRA loading
+huggingface_hub>=0.20.0
 
 # Image Processing
 Pillow>=10.0.0
@@ -25,8 +26,9 @@ tqdm>=4.66.0
 einops>=0.7.0
 requests>=2.31.0
 
-# xformers for PyTorch 2.6.0
-xformers==0.0.29.post3
+# Optional: Flash Attention (recommended for best performance)
+# Install separately with: pip install flash-attn --no-build-isolation
+# flash-attn>=2.5.0
 
 # Sentencepiece for tokenizers
 sentencepiece>=0.2.0
