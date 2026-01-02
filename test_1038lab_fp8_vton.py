@@ -103,26 +103,36 @@ def download_lora_weights(lora_dir: str = "./lora_weights"):
         return None
 
 
-def load_1038lab_fp8_pipeline(
+def load_fp8_pipeline(
     lora_path: str = None,
-    device: str = "cuda"
+    device: str = "cuda",
+    model_id: str = None
 ):
     """
-    Load the 1038lab FP8 quantized Qwen-Image-Edit-2511 model.
+    Load an FP8 quantized Qwen-Image-Edit-2511 model.
     
-    This model is pre-quantized to FP8 and packaged in diffusers format,
-    making it directly compatible with the diffusers library.
+    Tries multiple FP8 model sources in order:
+    1. 1038lab/Qwen-Image-Edit-2511-FP8
+    2. drbaph/Qwen-Image-Edit-2511-FP8
+    3. Falls back to BF16 base model
     """
     from diffusers import QwenImageEditPlusPipeline, FlowMatchEulerDiscreteScheduler
     
-    model_id = "1038lab/Qwen-Image-Edit-2511-FP8"
+    # List of FP8 models to try (in order of preference)
+    fp8_models = [
+        "drbaph/Qwen-Image-Edit-2511-FP8",     # Most reliable, ComfyUI compatible
+        "1038lab/Qwen-Image-Edit-2511-FP8",    # Alternative
+        "armychimp/Qwen-Image-Edit-2511-FP8",  # Another alternative
+    ]
+    
+    if model_id:
+        fp8_models = [model_id] + fp8_models
     
     print("\n" + "=" * 60)
-    print("🚀 Loading 1038lab FP8 Qwen-Image-Edit-2511")
+    print("🚀 Loading FP8 Qwen-Image-Edit-2511")
     print("=" * 60)
-    print(f"Model: {model_id}")
     print(f"LoRA: {lora_path if lora_path else 'None'}")
-    print("This is a pre-quantized FP8 model for reduced VRAM usage")
+    print("Trying FP8 models in order of preference...")
     print("-" * 60)
     
     # Clear GPU memory
@@ -137,16 +147,15 @@ def load_1038lab_fp8_pipeline(
     start_time = time.time()
     
     # Scheduler config for 4-step Lightning LoRA
-    # This scheduler configuration is optimized for the distilled model
     scheduler_config = {
         "base_image_seq_len": 256,
-        "base_shift": math.log(3),  # shift=3 used in distillation
+        "base_shift": math.log(3),
         "invert_sigmas": False,
         "max_image_seq_len": 8192,
-        "max_shift": math.log(3),   # shift=3 used in distillation
+        "max_shift": math.log(3),
         "num_train_timesteps": 1000,
         "shift": 1.0,
-        "shift_terminal": None,     # Required for distilled model
+        "shift_terminal": None,
         "stochastic_sampling": False,
         "time_shift_type": "exponential",
         "use_beta_sigmas": False,
@@ -156,28 +165,37 @@ def load_1038lab_fp8_pipeline(
     }
     scheduler = FlowMatchEulerDiscreteScheduler.from_config(scheduler_config)
     
-    # Load the FP8 model
-    print("Loading FP8 pipeline (this may take a few minutes on first run)...")
+    # Try loading FP8 models in order
+    pipeline = None
+    loaded_model = None
     
-    try:
+    for fp8_model_id in fp8_models:
+        print(f"\n🔄 Trying: {fp8_model_id}")
+        try:
+            pipeline = QwenImageEditPlusPipeline.from_pretrained(
+                fp8_model_id,
+                scheduler=scheduler,
+                torch_dtype=torch.bfloat16,
+                device_map="balanced",
+            )
+            loaded_model = fp8_model_id
+            print(f"✅ Successfully loaded: {fp8_model_id}")
+            break
+        except Exception as e:
+            print(f"   ❌ Failed: {str(e)[:80]}...")
+            continue
+    
+    # Fall back to BF16 if all FP8 models failed
+    if pipeline is None:
+        print("\n⚠️ All FP8 models failed, falling back to BF16...")
+        loaded_model = "Qwen/Qwen-Image-Edit-2511"
         pipeline = QwenImageEditPlusPipeline.from_pretrained(
-            model_id,
-            scheduler=scheduler,
-            torch_dtype=torch.bfloat16,  # Compute dtype
-            device_map="balanced",
-        )
-        print("✅ FP8 model loaded successfully!")
-        
-    except Exception as e:
-        print(f"⚠️ Failed to load FP8 model: {e}")
-        print("Falling back to standard BF16 model...")
-        
-        pipeline = QwenImageEditPlusPipeline.from_pretrained(
-            "Qwen/Qwen-Image-Edit-2511",
+            loaded_model,
             scheduler=scheduler,
             torch_dtype=torch.bfloat16,
             device_map="balanced",
         )
+        print(f"✅ Loaded BF16 model: {loaded_model}")
     
     # Load LoRA if provided
     if lora_path and os.path.exists(lora_path):
@@ -411,7 +429,7 @@ Examples:
         print(f"   Steps: {args.steps}, CFG: {args.cfg}")
     
     # Load pipeline
-    pipeline = load_1038lab_fp8_pipeline(
+    pipeline = load_fp8_pipeline(
         lora_path=lora_path,
     )
     
@@ -439,7 +457,7 @@ Examples:
     print("\n" + "=" * 60)
     print("📋 TEST SUMMARY")
     print("=" * 60)
-    print(f"Model: 1038lab/Qwen-Image-Edit-2511-FP8")
+    print(f"Model: FP8 Quantized (drbaph or fallback)")
     print(f"LoRA: {'4-Step Lightning ⚡' if lora_path else 'None'}")
     print(f"Steps: {args.steps}")
     print(f"CFG Scale: {args.cfg}")
