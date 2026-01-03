@@ -289,11 +289,33 @@ def run_lightx2v_vton(
         attn_mode = "torch_sdpa"
     
     # Create generator with resolution settings
-    print(f"\n🔧 Creating generator (steps={steps}, resolution={target_width}x{target_height})...")
+    print(f"\n🔧 Creating generator (steps={steps})...")
     
-    # Set custom_shape on pipeline to force specific resolution (format: "height,width")
-    # This overrides LightX2V's automatic aspect ratio resolution
-    pipe.custom_shape = f"{target_height},{target_width}"
+    # IMPORTANT: Detect input image aspect ratio BEFORE creating generator
+    # to prevent zooming/cropping
+    person_img_check = Image.open(person_image_path)
+    orig_w, orig_h = person_img_check.size
+    orig_ratio = orig_w / orig_h
+    person_img_check.close()
+    
+    # Adjust target dimensions to match input aspect ratio
+    if orig_ratio < 1:  # Portrait (taller than wide)
+        # Keep height at target, adjust width
+        actual_height = target_height
+        actual_width = int(target_height * orig_ratio)
+    else:  # Landscape or square
+        # Keep width at target, adjust height
+        actual_width = target_width
+        actual_height = int(target_width / orig_ratio)
+    
+    # Ensure dimensions are multiples of 16
+    actual_width = max(16, (actual_width // 16) * 16)
+    actual_height = max(16, (actual_height // 16) * 16)
+    
+    print(f"📐 Input: {orig_w}x{orig_h} → Output: {actual_width}x{actual_height} (preserving aspect ratio)")
+    
+    # Set custom_shape based on actual aspect-ratio-correct dimensions
+    pipe.custom_shape = f"{actual_height},{actual_width}"
     print(f"   Setting custom_shape: {pipe.custom_shape}")
     
     pipe.create_generator(
@@ -301,8 +323,8 @@ def run_lightx2v_vton(
         auto_resize=False,  # Disable auto-resize
         infer_steps=steps,
         guidance_scale=1.0,
-        width=target_width,
-        height=target_height,
+        width=actual_width,
+        height=actual_height,
     )
     
     # Enable TeaCache AFTER creating generator (model must be loaded first)
@@ -356,36 +378,16 @@ def run_lightx2v_vton(
     
     print("=" * 60)
     
-    # Pre-resize images to target resolution (LightX2V uses input size for output)
+    # Pre-resize images to calculated resolution (actual_width x actual_height)
     import tempfile
     temp_dir = tempfile.mkdtemp()
     
-    # Get original person image dimensions to preserve aspect ratio
+    # Resize person image to aspect-ratio-correct dimensions
     person_img = Image.open(person_image_path)
-    orig_w, orig_h = person_img.size
-    orig_ratio = orig_w / orig_h
-    
-    # Adjust target dimensions to match input aspect ratio
-    # This prevents zooming/cropping
-    if orig_ratio < 1:  # Portrait (taller than wide)
-        # Keep height at target, adjust width
-        actual_height = target_height
-        actual_width = int(target_height * orig_ratio)
-    else:  # Landscape or square
-        # Keep width at target, adjust height
-        actual_width = target_width
-        actual_height = int(target_width / orig_ratio)
-    
-    # Ensure dimensions are multiples of 16
-    actual_width = max(16, (actual_width // 16) * 16)
-    actual_height = max(16, (actual_height // 16) * 16)
-    
-    print(f"📐 Person: {orig_w}x{orig_h} → {actual_width}x{actual_height} (preserving aspect ratio)")
-    
-    # Resize person image preserving aspect ratio
     person_resized = person_img.resize((actual_width, actual_height), Image.LANCZOS)
     person_temp = os.path.join(temp_dir, "person_resized.png")
     person_resized.save(person_temp)
+    print(f"📐 Person resized to: {actual_width}x{actual_height}")
     
     # Resize cloth image proportionally to match person
     cloth_img = Image.open(cloth_image_path)
@@ -405,10 +407,6 @@ def run_lightx2v_vton(
     cloth_resized.save(cloth_temp)
     
     print(f"📐 Cloth: {cloth_img.width}x{cloth_img.height} → {cloth_w}x{cloth_h}")
-    
-    # Update custom_shape to actual dimensions
-    pipe.custom_shape = f"{actual_height},{actual_width}"
-    print(f"📐 Custom shape updated: {actual_height}x{actual_width}")
     
     # Use resized images
     image_paths = f"{person_temp},{cloth_temp}"
