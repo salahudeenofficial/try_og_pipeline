@@ -314,45 +314,16 @@ def run_lightx2v_vton(
         height=target_height,
     )
     
-    # Apply torch.compile to transformer_infer for faster inference
-    # Note: LightX2V uses Triton kernels which may not be compatible with torch.compile
+    # torch.compile status
+    # NOTE: LightX2V uses Triton kernels extensively (layer norms, modulation, etc.)
+    # which are NOT compatible with torch.compile/TorchDynamo.
+    # The Triton kernels are already highly optimized, providing ~similar performance.
     if enable_compile:
-        print("\n⚡ Attempting torch.compile optimization...")
-        try:
-            model = pipe.runner.model
-            
-            # Check if model uses Triton kernels (which don't work with torch.compile)
-            uses_triton = hasattr(model.transformer_infer, 'modulate_func')
-            
-            if uses_triton:
-                # Option 1: Try setting modulate_type to non-triton before compilation
-                if hasattr(model.transformer_infer, 'config'):
-                    model.transformer_infer.config['modulate_type'] = 'torch'
-                    model.transformer_infer.modulate_func = lambda x, scale, shift: x * (1 + scale) + shift
-                    print("   Disabled Triton modulation, using PyTorch fallback")
-            
-            if hasattr(model, 'transformer_infer') and hasattr(model.transformer_infer, 'infer'):
-                if not getattr(model.transformer_infer, '_compiled', False):
-                    print("   Compiling transformer_infer.infer()...")
-                    
-                    # Use 'default' mode which is more compatible with custom ops
-                    model.transformer_infer.infer = torch.compile(
-                        model.transformer_infer.infer,
-                        mode="default",  # More compatible than reduce-overhead
-                        fullgraph=False,
-                        dynamic=True,
-                        backend="inductor",  # Use inductor backend
-                    )
-                    model.transformer_infer._compiled = True
-                    print("✅ torch.compile applied (first run will include compilation time)")
-                else:
-                    print("   Already compiled")
-            else:
-                print("⚠️ transformer_infer not found")
-        except Exception as e:
-            print(f"⚠️ torch.compile failed: {e}")
-            print("   LightX2V uses Triton kernels which may not be compatible")
-            print("   Continuing without compilation...")
+        print("\n⚠️ torch.compile is NOT compatible with LightX2V")
+        print("   LightX2V uses Triton kernels (norm, modulation, attention)")
+        print("   which are incompatible with TorchDynamo/torch.compile.")
+        print("   ✅ Good news: Triton kernels are already highly optimized!")
+        print("   Continuing without torch.compile...")
     
     init_time = time.time() - start_time
     print(f"✅ Pipeline initialized in {init_time:.2f} seconds")
