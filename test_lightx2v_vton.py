@@ -288,14 +288,22 @@ def run_lightx2v_vton(
         print(f"\n🔧 Flash Attention unavailable ({type(e).__name__}), using PyTorch SDPA")
         attn_mode = "torch_sdpa"
     
-    # Create generator with resolution settings and optimizations
-    print(f"\n🔧 Creating generator (steps={steps}, resolution={target_width}x{target_height})...")
-    
-    # Prepare feature caching config
-    feature_caching = "TeaCache" if enable_teacache else "NoCaching"
+    # Enable TeaCache if requested (before creating generator)
     if enable_teacache:
-        print(f"⚡ TeaCache enabled (threshold={teacache_thresh}) for ~1.5-2x speedup")
+        print(f"\n⚡ Enabling TeaCache (threshold={teacache_thresh}) for ~1.5-2x speedup...")
+        try:
+            pipe.enable_teacache(threshold=teacache_thresh, use_ret_steps=False)
+            print("✅ TeaCache enabled")
+        except AttributeError:
+            # Fallback: set config directly if method doesn't exist
+            print("   Setting TeaCache via config...")
+            pipe.config.update({
+                "feature_caching": "TeaCache",
+                "teacache_thresh": teacache_thresh,
+            })
     
+    # Create generator with resolution settings
+    print(f"\n🔧 Creating generator (steps={steps}, resolution={target_width}x{target_height})...")
     pipe.create_generator(
         attn_mode=attn_mode,
         auto_resize=False,  # Disable auto-resize, use our calculated resolution
@@ -303,8 +311,6 @@ def run_lightx2v_vton(
         guidance_scale=1.0,
         width=target_width,
         height=target_height,
-        feature_caching=feature_caching,
-        teacache_thresh=teacache_thresh,
     )
     
     init_time = time.time() - start_time
