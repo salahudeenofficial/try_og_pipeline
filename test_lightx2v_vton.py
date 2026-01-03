@@ -360,22 +360,43 @@ def run_lightx2v_vton(
     import tempfile
     temp_dir = tempfile.mkdtemp()
     
-    # Resize person image to target resolution
+    # Get original person image dimensions to preserve aspect ratio
     person_img = Image.open(person_image_path)
-    person_resized = person_img.resize((target_width, target_height), Image.LANCZOS)
+    orig_w, orig_h = person_img.size
+    orig_ratio = orig_w / orig_h
+    
+    # Adjust target dimensions to match input aspect ratio
+    # This prevents zooming/cropping
+    if orig_ratio < 1:  # Portrait (taller than wide)
+        # Keep height at target, adjust width
+        actual_height = target_height
+        actual_width = int(target_height * orig_ratio)
+    else:  # Landscape or square
+        # Keep width at target, adjust height
+        actual_width = target_width
+        actual_height = int(target_width / orig_ratio)
+    
+    # Ensure dimensions are multiples of 16
+    actual_width = max(16, (actual_width // 16) * 16)
+    actual_height = max(16, (actual_height // 16) * 16)
+    
+    print(f"📐 Person: {orig_w}x{orig_h} → {actual_width}x{actual_height} (preserving aspect ratio)")
+    
+    # Resize person image preserving aspect ratio
+    person_resized = person_img.resize((actual_width, actual_height), Image.LANCZOS)
     person_temp = os.path.join(temp_dir, "person_resized.png")
     person_resized.save(person_temp)
     
-    # Resize cloth image proportionally
+    # Resize cloth image proportionally to match person
     cloth_img = Image.open(cloth_image_path)
     cloth_ratio = cloth_img.width / cloth_img.height
-    target_ratio = target_width / target_height
-    if cloth_ratio > target_ratio:
-        cloth_w = target_width
-        cloth_h = int(target_width / cloth_ratio)
+    person_ratio = actual_width / actual_height
+    if cloth_ratio > person_ratio:
+        cloth_w = actual_width
+        cloth_h = int(actual_width / cloth_ratio)
     else:
-        cloth_h = target_height
-        cloth_w = int(target_height * cloth_ratio)
+        cloth_h = actual_height
+        cloth_w = int(actual_height * cloth_ratio)
     # Ensure dimensions are at least 16x16
     cloth_w = max(16, (cloth_w // 16) * 16)
     cloth_h = max(16, (cloth_h // 16) * 16)
@@ -383,7 +404,11 @@ def run_lightx2v_vton(
     cloth_temp = os.path.join(temp_dir, "cloth_resized.png")
     cloth_resized.save(cloth_temp)
     
-    print(f"📐 Images resized: person={target_width}x{target_height}, cloth={cloth_w}x{cloth_h}")
+    print(f"📐 Cloth: {cloth_img.width}x{cloth_img.height} → {cloth_w}x{cloth_h}")
+    
+    # Update custom_shape to actual dimensions
+    pipe.custom_shape = f"{actual_height},{actual_width}"
+    print(f"📐 Custom shape updated: {actual_height}x{actual_width}")
     
     # Use resized images
     image_paths = f"{person_temp},{cloth_temp}"
