@@ -319,6 +319,18 @@ def run_lightx2v_vton(
         height=target_height,
     )
     
+    # Optional: Enable torch.compile for additional speedup
+    # Note: First inference will be slow due to compilation
+    if hasattr(pipe, 'runner') and hasattr(pipe.runner, 'model'):
+        try:
+            if not getattr(pipe.runner.model, '_compiled', False):
+                print("⚡ Enabling torch.compile for transformer...")
+                pipe.runner.model = torch.compile(pipe.runner.model, mode="reduce-overhead")
+                pipe.runner.model._compiled = True
+                print("✅ torch.compile enabled (first run will be slower)")
+        except Exception as e:
+            print(f"⚠️ torch.compile not available: {e}")
+    
     init_time = time.time() - start_time
     print(f"✅ Pipeline initialized in {init_time:.2f} seconds")
     
