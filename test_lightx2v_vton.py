@@ -289,19 +289,12 @@ def run_lightx2v_vton(
         attn_mode = "torch_sdpa"
     
     # Enable TeaCache if requested (before creating generator)
+    # NOTE: TeaCache is NOT compatible with Qwen Image model - the compiled
+    # inference class does not exist. Feature caching requires video models.
     if enable_teacache:
-        print(f"\n⚡ Enabling TeaCache (threshold={teacache_thresh}) for ~1.5-2x speedup...")
-        try:
-            # LightX2V uses enable_cache with cache_method="Tea"
-            pipe.enable_cache(
-                cache_method="Tea",  # "Tea" for TeaCache, "Mag" for MagCache
-                teacache_thresh=teacache_thresh,
-                use_ret_steps=False,
-            )
-            print("✅ TeaCache enabled")
-        except Exception as e:
-            print(f"⚠️ TeaCache not available: {e}")
-            print("   Continuing without TeaCache...")
+        print(f"\n⚠️ TeaCache requested but NOT supported for Qwen Image model")
+        print("   TeaCache requires video models (Wan2.x, HunyuanVideo)")
+        print("   Continuing without TeaCache...")
     
     # Create generator with resolution settings
     print(f"\n🔧 Creating generator (steps={steps}, resolution={target_width}x{target_height})...")
