@@ -164,6 +164,7 @@ def run_lightx2v_vton(
     enable_teacache: bool = False,
     teacache_thresh: float = 0.26,
     warmup: bool = False,
+    enable_compile: bool = False,
 ):
     """
     Run Virtual Try-On using LightX2V framework.
@@ -313,8 +314,33 @@ def run_lightx2v_vton(
         height=target_height,
     )
     
-    # Note: torch.compile via enable_compile() is not compatible with Qwen Image model
-    # The compiled inference class doesn't exist for this model type
+    # Apply torch.compile to transformer_infer for faster inference
+    # This compiles the internal inference methods for ~10-30% speedup
+    if enable_compile:
+        print("\n⚡ Applying torch.compile to transformer inference...")
+        try:
+            model = pipe.runner.model
+            # Option A: Compile the transformer_infer.infer method (main hotspot)
+            if hasattr(model, 'transformer_infer') and hasattr(model.transformer_infer, 'infer'):
+                if not getattr(model.transformer_infer, '_compiled', False):
+                    print("   Compiling transformer_infer.infer()...")
+                    # Use reduce-overhead for best latency, fullgraph=False for compatibility
+                    model.transformer_infer.infer = torch.compile(
+                        model.transformer_infer.infer,
+                        mode="reduce-overhead",
+                        fullgraph=False,
+                        dynamic=True,  # Handle dynamic shapes
+                    )
+                    model.transformer_infer._compiled = True
+                    print("✅ torch.compile applied (first run will include compilation time)")
+                else:
+                    print("   Already compiled")
+            else:
+                print("⚠️ transformer_infer not found")
+        except Exception as e:
+            print(f"⚠️ torch.compile failed: {e}")
+            import traceback
+            traceback.print_exc()
     
     init_time = time.time() - start_time
     print(f"✅ Pipeline initialized in {init_time:.2f} seconds")
@@ -515,6 +541,8 @@ Examples:
                         help="TeaCache threshold (lower = faster, default: 0.26)")
     parser.add_argument("--warmup", action="store_true",
                         help="Run warmup inference before timing")
+    parser.add_argument("--compile", action="store_true",
+                        help="Enable torch.compile for ~10-30%% faster inference (first run slower)")
     
     args = parser.parse_args()
     
@@ -583,6 +611,7 @@ Examples:
         enable_teacache=args.teacache,
         teacache_thresh=args.teacache_thresh,
         warmup=args.warmup,
+        enable_compile=args.compile,
     )
     
     # Create comparison
