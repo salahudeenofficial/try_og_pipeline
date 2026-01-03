@@ -324,9 +324,37 @@ def run_lightx2v_vton(
     
     print("=" * 60)
     
-    # Prepare image paths for multi-image input
-    # LightX2V uses comma-separated paths for multi-image
-    image_paths = f"{person_image_path},{cloth_image_path}"
+    # Pre-resize images to target resolution (LightX2V uses input size for output)
+    import tempfile
+    temp_dir = tempfile.mkdtemp()
+    
+    # Resize person image to target resolution
+    person_img = Image.open(person_image_path)
+    person_resized = person_img.resize((target_width, target_height), Image.LANCZOS)
+    person_temp = os.path.join(temp_dir, "person_resized.png")
+    person_resized.save(person_temp)
+    
+    # Resize cloth image proportionally
+    cloth_img = Image.open(cloth_image_path)
+    cloth_ratio = cloth_img.width / cloth_img.height
+    target_ratio = target_width / target_height
+    if cloth_ratio > target_ratio:
+        cloth_w = target_width
+        cloth_h = int(target_width / cloth_ratio)
+    else:
+        cloth_h = target_height
+        cloth_w = int(target_height * cloth_ratio)
+    # Ensure dimensions are at least 16x16
+    cloth_w = max(16, (cloth_w // 16) * 16)
+    cloth_h = max(16, (cloth_h // 16) * 16)
+    cloth_resized = cloth_img.resize((cloth_w, cloth_h), Image.LANCZOS)
+    cloth_temp = os.path.join(temp_dir, "cloth_resized.png")
+    cloth_resized.save(cloth_temp)
+    
+    print(f"📐 Images resized: person={target_width}x{target_height}, cloth={cloth_w}x{cloth_h}")
+    
+    # Use resized images
+    image_paths = f"{person_temp},{cloth_temp}"
     
     # Use prompt
     if prompt is None:
@@ -335,8 +363,8 @@ def run_lightx2v_vton(
     print("\n" + "=" * 60)
     print("👗 Running Virtual Try-On Inference")
     print("=" * 60)
-    print(f"Person image: {person_image_path}")
-    print(f"Cloth image: {cloth_image_path}")
+    print(f"Person image: {person_image_path} -> {target_width}x{target_height}")
+    print(f"Cloth image: {cloth_image_path} -> {cloth_w}x{cloth_h}")
     print(f"Steps: {steps}")
     print(f"Mode: {mode}")
     print(f"Seed: {seed}")
@@ -349,7 +377,7 @@ def run_lightx2v_vton(
     print("\n🔄 Starting inference...")
     infer_start = time.time()
     
-    # Generate - resolution is controlled by create_generator width/height
+    # Generate - resolution is controlled by input image size
     pipe.generate(
         seed=seed,
         image_path=image_paths,
@@ -357,6 +385,10 @@ def run_lightx2v_vton(
         negative_prompt="",
         save_result_path=output_path,
     )
+    
+    # Cleanup temp files
+    import shutil
+    shutil.rmtree(temp_dir, ignore_errors=True)
     
     inference_time = time.time() - infer_start
     
