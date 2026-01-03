@@ -310,11 +310,12 @@ def run_lightx2v_vton(
     teacache_enabled = False
     if enable_teacache:
         print(f"\n⚡ Enabling TeaCache (threshold={teacache_thresh})...")
+        # Import our TeaCache implementation
+        import sys
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        if script_dir not in sys.path:
+            sys.path.insert(0, script_dir)
         try:
-            # Import our TeaCache implementation
-            import sys
-            import os
-            sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
             from teacache_transformer_infer import QwenImageTeaCacheTransformerInfer
             
             # Get the current transformer_infer
