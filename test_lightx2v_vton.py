@@ -349,13 +349,14 @@ def run_lightx2v_vton(
     print("\n🔄 Starting inference...")
     infer_start = time.time()
     
-    # Generate with CUDA generator for better performance
+    # Generate with size parameter for resolution control
     pipe.generate(
         seed=seed,
         image_path=image_paths,
         prompt=prompt,
         negative_prompt="",
         save_result_path=output_path,
+        size=f"{target_width}*{target_height}",
     )
     
     inference_time = time.time() - infer_start
