@@ -292,15 +292,15 @@ def run_lightx2v_vton(
     if enable_teacache:
         print(f"\n⚡ Enabling TeaCache (threshold={teacache_thresh}) for ~1.5-2x speedup...")
         try:
-            pipe.enable_teacache(threshold=teacache_thresh, use_ret_steps=False)
+            # LightX2V uses enable_cache method
+            pipe.enable_cache(
+                cache_type="teacache",
+                teacache_thresh=teacache_thresh,
+            )
             print("✅ TeaCache enabled")
-        except AttributeError:
-            # Fallback: set config directly if method doesn't exist
-            print("   Setting TeaCache via config...")
-            pipe.config.update({
-                "feature_caching": "TeaCache",
-                "teacache_thresh": teacache_thresh,
-            })
+        except Exception as e:
+            print(f"⚠️ TeaCache not available: {e}")
+            print("   Continuing without TeaCache...")
     
     # Create generator with resolution settings
     print(f"\n🔧 Creating generator (steps={steps}, resolution={target_width}x{target_height})...")
