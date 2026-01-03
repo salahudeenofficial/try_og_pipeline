@@ -161,6 +161,9 @@ def run_lightx2v_vton(
     steps: int = 4,
     target_width: int = None,
     target_height: int = None,
+    enable_teacache: bool = False,
+    teacache_thresh: float = 0.26,
+    warmup: bool = False,
 ):
     """
     Run Virtual Try-On using LightX2V framework.
@@ -176,6 +179,9 @@ def run_lightx2v_vton(
         steps: Inference steps (4 for distilled, 40 for base)
         target_width: Target output width (auto-calculated if None)
         target_height: Target output height (auto-calculated if None)
+        enable_teacache: Enable TeaCache for ~1.5-2x faster inference
+        teacache_thresh: TeaCache threshold (0.26 default, lower = faster but less quality)
+        warmup: Run warmup inference for consistent timing
     """
     from lightx2v import LightX2VPipeline
     
@@ -282,8 +288,14 @@ def run_lightx2v_vton(
         print(f"\n🔧 Flash Attention unavailable ({type(e).__name__}), using PyTorch SDPA")
         attn_mode = "torch_sdpa"
     
-    # Create generator with resolution settings
+    # Create generator with resolution settings and optimizations
     print(f"\n🔧 Creating generator (steps={steps}, resolution={target_width}x{target_height})...")
+    
+    # Prepare feature caching config
+    feature_caching = "TeaCache" if enable_teacache else "NoCaching"
+    if enable_teacache:
+        print(f"⚡ TeaCache enabled (threshold={teacache_thresh}) for ~1.5-2x speedup")
+    
     pipe.create_generator(
         attn_mode=attn_mode,
         auto_resize=False,  # Disable auto-resize, use our calculated resolution
@@ -291,6 +303,8 @@ def run_lightx2v_vton(
         guidance_scale=1.0,
         width=target_width,
         height=target_height,
+        feature_caching=feature_caching,
+        teacache_thresh=teacache_thresh,
     )
     
     init_time = time.time() - start_time
@@ -454,6 +468,12 @@ Examples:
     parser.add_argument("--resolution", type=str, default="720p",
                         choices=["480p", "720p", "1080p", "auto"],
                         help="Target resolution preset (default: 720p)")
+    parser.add_argument("--teacache", action="store_true",
+                        help="Enable TeaCache for ~1.5-2x faster inference (slight quality trade-off)")
+    parser.add_argument("--teacache-thresh", type=float, default=0.26,
+                        help="TeaCache threshold (lower = faster, default: 0.26)")
+    parser.add_argument("--warmup", action="store_true",
+                        help="Run warmup inference before timing")
     
     args = parser.parse_args()
     
@@ -519,6 +539,9 @@ Examples:
         seed=args.seed,
         target_width=target_width,
         target_height=target_height,
+        enable_teacache=args.teacache,
+        teacache_thresh=args.teacache_thresh,
+        warmup=args.warmup,
     )
     
     # Create comparison
