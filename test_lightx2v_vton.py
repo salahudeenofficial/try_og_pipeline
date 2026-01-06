@@ -350,7 +350,6 @@ def run_lightx2v_vton(
     
     pipe.create_generator(
         attn_mode=attn_mode,
-        auto_resize=False,  # Disable auto-resize
         infer_steps=steps,
         guidance_scale=1.0,
         width=actual_width,
