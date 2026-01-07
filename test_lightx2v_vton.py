@@ -376,6 +376,8 @@ def run_lightx2v_vton(
     original_run_pipeline = pipe.runner.run_pipeline
     def patched_run_pipeline(input_info):
         input_info.aspect_ratio = target_aspect_ratio
+        # Also need to set _auto_resize in config (get_custom_shape checks it)
+        pipe.runner.config["_auto_resize"] = False
         print(f"   Injected aspect_ratio into input_info: {target_aspect_ratio}")
         return original_run_pipeline(input_info)
     pipe.runner.run_pipeline = patched_run_pipeline
