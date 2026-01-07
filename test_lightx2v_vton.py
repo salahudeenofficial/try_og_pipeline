@@ -358,20 +358,14 @@ def run_lightx2v_vton(
         target_aspect_ratio = "1:1"  # Maps to 1328x1328
         print(f"   Setting aspect_ratio: 1:1 (square) → 1328x1328")
     
-    # Monkey-patch run_pipeline to inject aspect_ratio into input_info
-    # This is needed because set_input_info() doesn't pass aspect_ratio for i2i task
-    original_run_pipeline = pipe.runner.run_pipeline
-    def patched_run_pipeline(input_info):
-        input_info.aspect_ratio = target_aspect_ratio
-        return original_run_pipeline(input_info)
-    pipe.runner.run_pipeline = patched_run_pipeline
-    
+    # Pass aspect_ratio directly to create_generator (this is the proper LightX2V API)
     pipe.create_generator(
         attn_mode=attn_mode,
         infer_steps=steps,
         guidance_scale=1.0,
         width=actual_width,
         height=actual_height,
+        aspect_ratio=target_aspect_ratio,  # This sets config aspect_ratio properly
     )
     
     # Enable TeaCache AFTER creating generator (model must be loaded first)
