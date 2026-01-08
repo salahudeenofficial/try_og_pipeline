@@ -16,3 +16,5 @@ python test_lightx2v_vton.py --mode fp8 --person person.jpg --cloth cloth.png
 --resolution 480p|720p|1080p (default: 720p)
 --teacache              (faster, slight quality loss)
 --teacache-thresh 0.05  (lower = better quality)
+
+at 720p 3:4 is hardcoded in the code.fixed resolution with resonable quality of result 
