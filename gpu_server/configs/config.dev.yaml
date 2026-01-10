@@ -1,0 +1,51 @@
+# Development Configuration
+# =========================
+# Uses mock mode for testing without GPU
+
+server:
+  node_id: "gpu-node-dev"
+  host: "0.0.0.0"
+  port: 8080
+  workers: 1
+
+security:
+  internal_auth_token: "dev-secret-token-change-in-production"
+  require_auth: false  # Disable auth for easy testing
+
+asset_service:
+  callback_url: ""  # No callbacks in dev
+  internal_auth_token: ""
+  timeout: 10
+  retries: 3
+  retry_backoff: [1, 2, 4]
+
+load_balancer:
+  url: ""
+  internal_auth_token: ""
+
+model:
+  model_type: "qwen"
+  model_version: "1.0.0-dev"
+  device: "cuda"
+  default_mode: "fp8"
+  default_steps: 4
+  default_seed: 42
+  default_cfg: 1.0
+  default_resolution: "720p"
+  enable_teacache: false
+  teacache_thresh: 0.05
+
+workflow:
+  preprocess:
+    resize_to_resolution: true
+    maintain_aspect_ratio: true
+  postprocess:
+    create_comparison: false
+    compress_output: false
+  advanced:
+    warmup_on_startup: false  # Skip warmup in dev
+    clear_cache_between_jobs: true
+
+logging:
+  level: "DEBUG"  # Verbose logging for development
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"

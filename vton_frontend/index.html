@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VTON Inference Tester | Virtual Try-On</title>
+    <meta name="description" content="Test the Virtual Try-On GPU inference server with an intuitive interface">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-content">
+                <div class="logo">
+                    <span class="logo-icon">👗</span>
+                    <span class="logo-text">VTON Tester</span>
+                </div>
+                <div class="server-status" id="serverStatus">
+                    <span class="status-dot status-checking"></span>
+                    <span class="status-text">Checking server...</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Server Config Card -->
+            <section class="config-card glass-card">
+                <h2 class="card-title">
+                    <span class="icon">⚙️</span>
+                    Server Configuration
+                </h2>
+                <div class="config-grid">
+                    <div class="input-group">
+                        <label for="serverUrl">GPU Server URL</label>
+                        <input type="text" id="serverUrl" value="http://localhost:8080" placeholder="http://localhost:8080">
+                    </div>
+                    <div class="input-group">
+                        <label for="authToken">Auth Token (optional)</label>
+                        <input type="password" id="authToken" placeholder="Leave empty if not required">
+                    </div>
+                </div>
+                <button class="btn btn-secondary" id="checkServerBtn" onclick="checkServerStatus()">
+                    <span class="btn-icon">🔍</span>
+                    Check Connection
+                </button>
+            </section>
+
+            <!-- Upload Section -->
+            <section class="upload-section">
+                <div class="upload-grid">
+                    <!-- Person Image Upload -->
+                    <div class="upload-card glass-card">
+                        <h3 class="upload-title">
+                            <span class="icon">👤</span>
+                            Person Image
+                        </h3>
+                        <p class="upload-description">Upload a masked person image (with green mask on clothing area)</p>
+                        <div class="upload-zone" id="personUploadZone" onclick="document.getElementById('personInput').click()">
+                            <input type="file" id="personInput" accept="image/*" hidden onchange="handleFileUpload(event, 'person')">
+                            <div class="upload-placeholder" id="personPlaceholder">
+                                <span class="upload-icon">📁</span>
+                                <span class="upload-text">Click or drag to upload</span>
+                                <span class="upload-hint">PNG, JPG (max 10MB)</span>
+                            </div>
+                            <img id="personPreview" class="upload-preview hidden" alt="Person preview">
+                        </div>
+                        <button class="btn btn-small btn-danger hidden" id="personClear" onclick="clearUpload('person')">
+                            Clear
+                        </button>
+                    </div>
+
+                    <!-- Garment Image Upload -->
+                    <div class="upload-card glass-card">
+                        <h3 class="upload-title">
+                            <span class="icon">👕</span>
+                            Garment Image
+                        </h3>
+                        <p class="upload-description">Upload the garment/clothing to try on</p>
+                        <div class="upload-zone" id="garmentUploadZone" onclick="document.getElementById('garmentInput').click()">
+                            <input type="file" id="garmentInput" accept="image/*" hidden onchange="handleFileUpload(event, 'garment')">
+                            <div class="upload-placeholder" id="garmentPlaceholder">
+                                <span class="upload-icon">📁</span>
+                                <span class="upload-text">Click or drag to upload</span>
+                                <span class="upload-hint">PNG, JPG (max 10MB)</span>
+                            </div>
+                            <img id="garmentPreview" class="upload-preview hidden" alt="Garment preview">
+                        </div>
+                        <button class="btn btn-small btn-danger hidden" id="garmentClear" onclick="clearUpload('garment')">
+                            Clear
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Inference Parameters -->
+            <section class="params-card glass-card">
+                <h2 class="card-title">
+                    <span class="icon">🎛️</span>
+                    Inference Parameters
+                </h2>
+                <div class="params-grid">
+                    <div class="input-group">
+                        <label for="seed">Seed</label>
+                        <input type="number" id="seed" value="42" min="0" max="2147483647">
+                        <button class="btn btn-tiny" onclick="randomizeSeed()">🎲</button>
+                    </div>
+                    <div class="input-group">
+                        <label for="steps">Steps</label>
+                        <input type="number" id="steps" value="4" min="1" max="50">
+                    </div>
+                    <div class="input-group">
+                        <label for="cfg">CFG Scale</label>
+                        <input type="number" id="cfg" value="1.0" min="0.1" max="20" step="0.1">
+                    </div>
+                </div>
+            </section>
+
+            <!-- Run Inference Button -->
+            <section class="action-section">
+                <button class="btn btn-primary btn-large" id="inferBtn" onclick="runInference()">
+                    <span class="btn-icon">🚀</span>
+                    <span class="btn-text">Run Virtual Try-On</span>
+                </button>
+            </section>
+
+            <!-- Progress Section -->
+            <section class="progress-section hidden" id="progressSection">
+                <div class="progress-card glass-card">
+                    <div class="progress-header">
+                        <span class="progress-title">Processing...</span>
+                        <span class="progress-time" id="progressTime">0.0s</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="progressFill"></div>
+                    </div>
+                    <p class="progress-status" id="progressStatus">Sending request to GPU server...</p>
+                </div>
+            </section>
+
+            <!-- Result Section -->
+            <section class="result-section hidden" id="resultSection">
+                <div class="result-card glass-card">
+                    <h2 class="card-title">
+                        <span class="icon">✨</span>
+                        Result
+                    </h2>
+                    <div class="result-grid">
+                        <div class="result-images">
+                            <div class="result-image-container">
+                                <img id="resultImage" alt="Try-on result">
+                            </div>
+                        </div>
+                        <div class="result-stats">
+                            <div class="stat-item">
+                                <span class="stat-label">Inference Time</span>
+                                <span class="stat-value" id="inferenceTime">-</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-label">Job ID</span>
+                                <span class="stat-value stat-small" id="jobId">-</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="result-actions">
+                        <button class="btn btn-primary" onclick="downloadResult()">
+                            <span class="btn-icon">💾</span>
+                            Download Result
+                        </button>
+                        <button class="btn btn-secondary" onclick="clearResult()">
+                            <span class="btn-icon">🔄</span>
+                            New Try-On
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Error Section -->
+            <section class="error-section hidden" id="errorSection">
+                <div class="error-card glass-card">
+                    <h2 class="card-title error-title">
+                        <span class="icon">❌</span>
+                        Error
+                    </h2>
+                    <p class="error-message" id="errorMessage">An error occurred</p>
+                    <button class="btn btn-secondary" onclick="hideError()">Dismiss</button>
+                </div>
+            </section>
+        </main>
+
+        <!-- Footer -->
+        <footer class="footer">
+            <p>VTON Inference Tester | GPU Server Testing Tool</p>
+        </footer>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

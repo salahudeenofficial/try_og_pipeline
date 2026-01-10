@@ -1,0 +1,63 @@
+# GPU Server Configuration
+# ========================
+# All runtime configuration for the GPU inference server
+
+server:
+  node_id: "gpu-node-1"           # Unique identifier for this node
+  host: "0.0.0.0"                 # Host to bind to
+  port: 8080                      # Port to listen on
+  workers: 1                      # Uvicorn workers (keep at 1 for single GPU)
+
+security:
+  internal_auth_token: "dev-secret-token-change-in-production"  # Token for incoming requests
+  require_auth: true              # Set to false for development/testing
+
+asset_service:
+  callback_url: "http://asset-service:9009/v1/vton/result"
+  internal_auth_token: "asset-service-secret"
+  timeout: 10                     # Callback timeout in seconds
+  retries: 3                      # Number of callback retries
+  retry_backoff: [1, 2, 4]        # Exponential backoff in seconds
+
+load_balancer:
+  url: ""                         # Optional: Load balancer URL (empty = disabled)
+  internal_auth_token: ""         # Optional: LB auth token
+
+model:
+  model_type: "qwen"              # Model type identifier
+  model_version: "1.0.0"          # Model version string
+  device: "cuda"                  # Device to use (cuda/cpu)
+  
+  # Inference settings
+  default_mode: "fp8"             # Default mode: "fp8", "lora", or "base"
+  default_steps: 4                # Default inference steps
+  default_seed: 42                # Default random seed
+  default_cfg: 1.0                # Default guidance scale
+  
+  # Resolution settings
+  default_resolution: "720p"      # Default: 480p, 720p, 1080p
+  
+  # TeaCache settings
+  enable_teacache: false          # Enable TeaCache by default
+  teacache_thresh: 0.05           # TeaCache threshold
+
+# Workflow configuration - easily editable
+workflow:
+  # Pre-processing steps
+  preprocess:
+    resize_to_resolution: true    # Resize input to target resolution
+    maintain_aspect_ratio: true   # Maintain aspect ratio when resizing
+    
+  # Post-processing steps  
+  postprocess:
+    create_comparison: false       # Create comparison image
+    compress_output: false         # Compress output PNG
+    
+  # Advanced settings
+  advanced:
+    warmup_on_startup: true        # Run warmup inference on startup
+    clear_cache_between_jobs: true # Clear GPU cache between jobs
+
+logging:
+  level: "INFO"                   # DEBUG, INFO, WARNING, ERROR
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"

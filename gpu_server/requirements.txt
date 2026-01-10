@@ -1,0 +1,24 @@
+# GPU Server Requirements
+# =======================
+
+# Web Framework
+fastapi>=0.109.0
+uvicorn[standard]>=0.27.0
+python-multipart>=0.0.6  # For file uploads
+
+# HTTP Client
+httpx>=0.26.0
+
+# Configuration
+pyyaml>=6.0.0
+
+# Data validation
+pydantic>=2.5.0
+
+# GPU monitoring (optional)
+# pynvml>=11.5.0
+
+# Core ML (inherited from parent project)
+# These should be installed via requirements.txt in parent directory
+# torch>=2.6.0
+# Pillow>=10.0.0
