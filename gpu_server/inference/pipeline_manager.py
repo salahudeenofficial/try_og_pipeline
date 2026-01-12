@@ -256,6 +256,45 @@ class PipelineManager:
                 aspect_ratio="3:4",
             )
             
+            # Enable TeaCache if configured
+            self.teacache_infer = None
+            if self.enable_teacache:
+                print(f"⚡ Enabling TeaCache (threshold={self.teacache_thresh})...")
+                try:
+                    # Import TeaCache implementation
+                    teacache_path = Path(__file__).parent.parent.parent / "teacache_transformer_infer.py"
+                    if teacache_path.exists():
+                        import importlib.util
+                        spec = importlib.util.spec_from_file_location("teacache_transformer_infer", teacache_path)
+                        teacache_module = importlib.util.module_from_spec(spec)
+                        spec.loader.exec_module(teacache_module)
+                        QwenImageTeaCacheTransformerInfer = teacache_module.QwenImageTeaCacheTransformerInfer
+                    else:
+                        from teacache_transformer_infer import QwenImageTeaCacheTransformerInfer
+                    
+                    # Get the current transformer_infer
+                    orig_transformer_infer = self.pipe.runner.model.transformer_infer
+                    
+                    # Create new TeaCache infer instance with same config
+                    teacache_config = orig_transformer_infer.config.copy()
+                    teacache_config["teacache_thresh"] = self.teacache_thresh
+                    teacache_config["coefficients"] = [0.5]  # Conservative for quality
+                    teacache_config["infer_steps"] = self.steps
+                    
+                    # Create TeaCache wrapper
+                    self.teacache_infer = QwenImageTeaCacheTransformerInfer(teacache_config)
+                    self.teacache_infer.scheduler = orig_transformer_infer.scheduler
+                    self.teacache_infer.infer_func = orig_transformer_infer.infer_func
+                    
+                    # Replace the transformer_infer
+                    self.pipe.runner.model.transformer_infer = self.teacache_infer
+                    
+                    print("✅ TeaCache enabled")
+                    print(f"   Threshold: {self.teacache_thresh}")
+                except Exception as e:
+                    print(f"⚠️ TeaCache setup failed: {e}")
+                    print("   Continuing without TeaCache...")
+            
             self.model_loaded = True
             print("✅ Pipeline loaded successfully!")
             
