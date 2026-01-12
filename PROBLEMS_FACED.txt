@@ -18,3 +18,10 @@ Cause: LightX2V commit 0e29a79 ("change target shape input info #749") introduce
 Fix: Revert LightX2V to commit 7651b0f (before the breaking change):
      cd LightX2V && git checkout 7651b0f
      Note: setup_lightx2v.sh has been updated to pin to this commit.
+
+## 4. JSON Serialization Error on Multiple Inference Calls (2026-01-12)
+Problem: Object of type QwenImageRunner is not JSON serializable
+Cause: Calling pipe.create_generator() multiple times (once per inference) causes 
+       LightX2V to try to serialize the runner object, which fails.
+Fix: Create the generator ONCE during server startup (in load_models), not per-inference.
+     The monkey-patch in run_inference handles aspect ratio dynamically for each image.
