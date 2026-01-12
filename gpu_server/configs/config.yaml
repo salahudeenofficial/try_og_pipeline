@@ -55,7 +55,7 @@ workflow:
     
   # Advanced settings
   advanced:
-    warmup_on_startup: true        # Run warmup inference on startup
+    warmup_on_startup: false       # Disabled - causes API issues
     clear_cache_between_jobs: true # Clear GPU cache between jobs
 
 logging:
