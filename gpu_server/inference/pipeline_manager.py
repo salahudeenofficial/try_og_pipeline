@@ -390,6 +390,10 @@ class PipelineManager:
         
         print(f"📐 Input: {orig_w}x{orig_h} (aspect: {target_aspect_ratio})")
         
+        # Clear TeaCache state before each inference for consistent performance
+        if self.teacache_infer is not None:
+            self.teacache_infer.clear()
+        
         # Prepare image paths (comma-separated for LightX2V)
         image_paths = f"{person_image_path},{garment_image_path}"
         
