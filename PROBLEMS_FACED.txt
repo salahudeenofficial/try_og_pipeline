@@ -9,3 +9,12 @@ Fix: Monkey-patch run_pipeline to inject aspect_ratio into input_info + set _aut
 Problem: Pre-installed flash_attn/sageattention compiled for wrong PyTorch version
 Cause: Base images have pre-compiled attention libs that conflict with PyTorch 2.6.0
 Fix: Use lightx2v/lightx2v:25101501-cu124 (CUDA 12.4) instead of cu128 version
+
+## 3. LightX2V target_shape Breaking Change (2026-01-12)
+Problem: AttributeError: 'LightX2VPipeline' object has no attribute 'target_shape'
+Cause: LightX2V commit 0e29a79 ("change target shape input info #749") introduced a breaking change
+       that requires the pipeline to have a target_shape attribute for i2i tasks.
+       The latest LightX2V main branch is incompatible with our code.
+Fix: Revert LightX2V to commit 7651b0f (before the breaking change):
+     cd LightX2V && git checkout 7651b0f
+     Note: setup_lightx2v.sh has been updated to pin to this commit.

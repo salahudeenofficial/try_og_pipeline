@@ -30,13 +30,17 @@ echo "🔧 Installing PyTorch 2.6.0 with CUDA 12.4 support..."
 pip install torch==2.6.0 torchvision==0.21.0 torchaudio==2.6.0 --index-url https://download.pytorch.org/whl/cu124
 
 # Clone and install LightX2V
+# IMPORTANT: Pinned to commit 7651b0f to avoid breaking change in 0e29a79 (target_shape requirement)
 echo ""
-echo "🔧 Installing LightX2V..."
+echo "🔧 Installing LightX2V (pinned to commit 7651b0f)..."
 if [ ! -d "LightX2V" ]; then
     git clone https://github.com/ModelTC/LightX2V.git
 fi
 
 cd LightX2V
+# Checkout specific commit to avoid breaking changes
+git fetch origin
+git checkout 7651b0f
 pip install -v -e .
 cd ..
 
