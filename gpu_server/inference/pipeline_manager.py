@@ -126,15 +126,18 @@ class PipelineManager:
     def find_fp8_path(self) -> Optional[str]:
         """Find FP8 quantized weights path."""
         possible_paths = [
-            # Relative paths
-            "models/Qwen-Image-Edit-2511-Lightning/qwen_image_edit_2511_fp8_e4m3fn_scaled_lightning.safetensors",
-            "models/qwen_image_edit_2511_fp8_e4m3fn_scaled_lightning.safetensors",
-            "../models/Qwen-Image-Edit-2511-Lightning/qwen_image_edit_2511_fp8_e4m3fn_scaled_lightning.safetensors",
-            # Project root
-            str(SCRIPT_DIR / "models" / "Qwen-Image-Edit-2511-Lightning" / "qwen_image_edit_2511_fp8_e4m3fn_scaled_lightning.safetensors"),
+            # Correct filename with version suffix
+            "models/Qwen-Image-Edit-2511-Lightning/qwen_image_edit_2511_fp8_e4m3fn_scaled_lightning_4steps_v1.0.safetensors",
+            "../models/Qwen-Image-Edit-2511-Lightning/qwen_image_edit_2511_fp8_e4m3fn_scaled_lightning_4steps_v1.0.safetensors",
             # Workspace paths (Vast.ai)
-            "/workspace/try_og_pipeline/models/Qwen-Image-Edit-2511-Lightning/qwen_image_edit_2511_fp8_e4m3fn_scaled_lightning.safetensors",
-            "/workspace/models/Qwen-Image-Edit-2511-Lightning/qwen_image_edit_2511_fp8_e4m3fn_scaled_lightning.safetensors",
+            "/workspace/try_og_pipeline/models/Qwen-Image-Edit-2511-Lightning/qwen_image_edit_2511_fp8_e4m3fn_scaled_lightning_4steps_v1.0.safetensors",
+            "/workspace/models/Qwen-Image-Edit-2511-Lightning/qwen_image_edit_2511_fp8_e4m3fn_scaled_lightning_4steps_v1.0.safetensors",
+            # Project root
+            str(SCRIPT_DIR / "models" / "Qwen-Image-Edit-2511-Lightning" / "qwen_image_edit_2511_fp8_e4m3fn_scaled_lightning_4steps_v1.0.safetensors"),
+            # Old filename (fallback)
+            "models/Qwen-Image-Edit-2511-Lightning/qwen_image_edit_2511_fp8_e4m3fn_scaled_lightning.safetensors",
+            "../models/Qwen-Image-Edit-2511-Lightning/qwen_image_edit_2511_fp8_e4m3fn_scaled_lightning.safetensors",
+            "models/qwen_image_edit_2511_fp8_e4m3fn_scaled_lightning.safetensors",
         ]
         
         for path in possible_paths:
