@@ -241,19 +241,11 @@ class PipelineManager:
             if self.mode == "base":
                 self.steps = 40
             
-            # Get attention mode
-            attn_mode = self.get_attention_mode()
+            # Get attention mode and store for later use
+            self.attn_mode = self.get_attention_mode()
             
-            # Create generator with default settings
-            # Using 720p 3:4 portrait as default
-            self.pipe.create_generator(
-                attn_mode=attn_mode,
-                infer_steps=self.steps,
-                guidance_scale=1.0,
-                width=768,
-                height=1024,
-                aspect_ratio="3:4",
-            )
+            # Note: We create the generator per-inference with the correct dimensions
+            # Don't create it here with fixed dimensions
             
             self.model_loaded = True
             print("✅ Pipeline loaded successfully!")
@@ -334,11 +326,19 @@ class PipelineManager:
         if prompt is None:
             prompt = VTON_PROMPT_CN
         
-        # Detect aspect ratio from input image
+        # Detect aspect ratio and dimensions from input image
         person_img = Image.open(person_image_path)
         orig_w, orig_h = person_img.size
         orig_ratio = orig_w / orig_h
         person_img.close()
+        
+        # Calculate actual dimensions (ensure multiples of 16)
+        actual_width = (orig_w // 16) * 16
+        actual_height = (orig_h // 16) * 16
+        
+        # Ensure minimum dimensions
+        actual_width = max(256, actual_width)
+        actual_height = max(256, actual_height)
         
         # Determine aspect_ratio for LightX2V
         if orig_ratio < 0.8:  # Portrait
@@ -347,6 +347,18 @@ class PipelineManager:
             target_aspect_ratio = "4:3"
         else:  # Square
             target_aspect_ratio = "1:1"
+        
+        print(f"📐 Creating generator: {actual_width}x{actual_height} (aspect: {target_aspect_ratio})")
+        
+        # Create generator with correct dimensions for this image
+        self.pipe.create_generator(
+            attn_mode=self.attn_mode,
+            infer_steps=steps,
+            guidance_scale=cfg,
+            width=actual_width,
+            height=actual_height,
+            aspect_ratio=target_aspect_ratio,
+        )
         
         # Prepare image paths (comma-separated for LightX2V)
         image_paths = f"{person_image_path},{garment_image_path}"
