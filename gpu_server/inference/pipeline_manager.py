@@ -218,8 +218,11 @@ class PipelineManager:
                     )
                     self.steps = 4
                 else:
-                    print("⚠️ FP8 weights not found, falling back to LoRA mode")
-                    self.mode = "lora"
+                    raise RuntimeError(
+                        "FP8 weights not found! Please download with:\n"
+                        "huggingface-cli download lightx2v/Qwen-Image-Edit-2511-Lightning --local-dir models/Qwen-Image-Edit-2511-Lightning\n"
+                        "Expected file: qwen_image_edit_2511_fp8_e4m3fn_scaled_lightning.safetensors"
+                    )
             
             if self.mode == "lora":
                 self.lora_path = self.find_lora_path()
