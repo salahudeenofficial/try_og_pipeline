@@ -38,7 +38,7 @@ model:
   default_resolution: "720p"      # Default: 480p, 720p, 1080p
   
   # TeaCache settings (for faster inference)
-  enable_teacache: true           # Enable TeaCache for ~15-20% speedup
+  enable_teacache: false          # Disable TeaCache due to quality degradation
   teacache_thresh: 0.02           # Very conservative - prioritize quality over speed
 
 # Workflow configuration - easily editable
