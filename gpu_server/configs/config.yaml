@@ -13,14 +13,14 @@ security:
   require_auth: false             # Disabled for frontend testing
 
 asset_service:
-  callback_url: "http://asset-service:9009/v1/vton/result"
+  callback_url: "http://65.0.6.48:9009/v1/vton/result"
   internal_auth_token: "asset-service-secret"
   timeout: 10                     # Callback timeout in seconds
   retries: 3                      # Number of callback retries
   retry_backoff: [1, 2, 4]        # Exponential backoff in seconds
 
 load_balancer:
-  url: ""                         # Optional: Load balancer URL (empty = disabled)
+  url: "http://65.0.6.48:9005"    # Load balancer URL
   internal_auth_token: ""         # Optional: LB auth token
 
 model:
