@@ -17,8 +17,33 @@ RESULT_CALLBACK_URL="http://13.201.18.255:9009/v1/vton/result"
 # Example: If you set "http://13.201.18.255:9005", the server will POST to "http://13.201.18.255:9005/job_complete"
 JOB_COMPLETE_CALLBACK_URL="http://13.201.18.255:9005"
 
+# GPU Node ID - Unique identifier for this GPU server instance
+# ESSENTIAL for load balancer: Used to identify which GPU node processed each job
+# Each GPU server instance must have a UNIQUE node_id (e.g., "gpu-node-1", "gpu-node-2", "gpu-node-aws-1")
+# The load balancer uses this to track which node is busy and route jobs accordingly
+GPU_NODE_ID="gpu-node-1"
+
 # Server port
 SERVER_PORT=8000
+
+# ============================================================================
+# AUTHENTICATION KEYS
+# ============================================================================
+
+# Incoming Auth Token - Token that clients must send in X-Internal-Auth header
+# This is what the server EXPECTS to receive in incoming requests
+# Set require_auth to true in config.yaml to enforce this
+INCOMING_AUTH_TOKEN="dev-secret-token-change-in-production"
+
+# Result Callback Auth Token - Token sent when posting results to your backend
+# This is what the server SENDS in the X-Internal-Auth header when calling RESULT_CALLBACK_URL
+# Must match what your backend expects to receive
+RESULT_CALLBACK_AUTH_TOKEN="supersecret-internal-token"
+
+# Load Balancer Auth Token - Token sent when notifying load balancer (optional)
+# This is what the server SENDS in the X-Internal-Auth header when calling load balancer
+# Leave empty if load balancer doesn't require authentication
+LOAD_BALANCER_AUTH_TOKEN=""
 
 # ============================================================================
 # SCRIPT START - Do not edit below unless you know what you're doing
@@ -55,17 +80,37 @@ echo "   ✓ Created backup: ${CONFIG_FILE}.backup"
 # Update port (match line starting with "  port:")
 sed -i "s|^  port:.*|  port: ${SERVER_PORT}                      # Port to listen on|" "$CONFIG_FILE"
 
+# Update node ID (ESSENTIAL for load balancer)
+sed -i "s|^  node_id:.*|  node_id: \"${GPU_NODE_ID}\"           # Unique identifier for this node|" "$CONFIG_FILE"
+
+# Update incoming auth token (security.internal_auth_token)
+sed -i "s|^  internal_auth_token:.*# Token for incoming requests|  internal_auth_token: \"${INCOMING_AUTH_TOKEN}\"  # Token for incoming requests|" "$CONFIG_FILE"
+
 # Update result callback URL (asset_service.callback_url)
 # Match line that has "callback_url:" under asset_service section (2 spaces indent)
 sed -i "s|^  callback_url:.*|  callback_url: \"${RESULT_CALLBACK_URL}\"|" "$CONFIG_FILE"
+
+# Update result callback auth token (asset_service.internal_auth_token)
+sed -i "/^asset_service:/,/^[^ ]/s|^  internal_auth_token:.*|  internal_auth_token: \"${RESULT_CALLBACK_AUTH_TOKEN}\"|" "$CONFIG_FILE"
 
 # Update job complete callback URL (load_balancer.url)
 # Match line that has "url:" under load_balancer section (2 spaces indent)
 sed -i "/^load_balancer:/,/^[^ ]/s|^  url:.*|  url: \"${JOB_COMPLETE_CALLBACK_URL}\"    # Load balancer URL|" "$CONFIG_FILE"
 
+# Update load balancer auth token (load_balancer.internal_auth_token)
+sed -i "/^load_balancer:/,/^[^ ]/s|^  internal_auth_token:.*|  internal_auth_token: \"${LOAD_BALANCER_AUTH_TOKEN}\"         # Optional: LB auth token|" "$CONFIG_FILE"
+
 echo "   ✓ Updated port: ${SERVER_PORT}"
+echo "   ✓ Updated node ID: ${GPU_NODE_ID}"
+echo "   ✓ Updated incoming auth token: ${INCOMING_AUTH_TOKEN}"
 echo "   ✓ Updated result callback: ${RESULT_CALLBACK_URL}"
+echo "   ✓ Updated result callback auth token: ${RESULT_CALLBACK_AUTH_TOKEN}"
 echo "   ✓ Updated load balancer URL: ${JOB_COMPLETE_CALLBACK_URL} (will POST to ${JOB_COMPLETE_CALLBACK_URL}/job_complete)"
+if [ -n "$LOAD_BALANCER_AUTH_TOKEN" ]; then
+    echo "   ✓ Updated load balancer auth token: ${LOAD_BALANCER_AUTH_TOKEN}"
+else
+    echo "   ✓ Load balancer auth token: (empty - no auth required)"
+fi
 echo ""
 
 # Step 3: Setup LightX2V (pinned to compatible version)
@@ -162,10 +207,26 @@ echo "📋 Step 5: Verifying configuration..."
 echo ""
 echo "   Configuration Summary:"
 echo "   ────────────────────────────────────────────"
+echo "   GPU Node ID:              ${GPU_NODE_ID}"
 echo "   Server Port:              ${SERVER_PORT}"
+echo ""
+echo "   Authentication:"
+echo "   ────────────────────────────────────────────"
+echo "   Incoming Auth Token:      ${INCOMING_AUTH_TOKEN}"
+echo "   (Required in X-Internal-Auth header)"
+echo ""
 echo "   Result Callback:          ${RESULT_CALLBACK_URL}"
-echo "   Load Balancer Base URL:   ${JOB_COMPLETE_CALLBACK_URL}"
-echo "   (LB POST endpoint):       ${JOB_COMPLETE_CALLBACK_URL}/job_complete"
+echo "   Result Callback Auth:     ${RESULT_CALLBACK_AUTH_TOKEN}"
+echo "   (Sent in X-Internal-Auth header)"
+echo ""
+echo "   Load Balancer URL:        ${JOB_COMPLETE_CALLBACK_URL}"
+echo "   (POST endpoint):         ${JOB_COMPLETE_CALLBACK_URL}/job_complete"
+if [ -n "$LOAD_BALANCER_AUTH_TOKEN" ]; then
+    echo "   Load Balancer Auth:       ${LOAD_BALANCER_AUTH_TOKEN}"
+else
+    echo "   Load Balancer Auth:       (none)"
+fi
+echo ""
 echo "   Config File:              ${CONFIG_PATH}"
 echo "   ────────────────────────────────────────────"
 echo ""
