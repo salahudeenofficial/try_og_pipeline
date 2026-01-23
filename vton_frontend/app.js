@@ -229,6 +229,7 @@ async function runInference() {
     const seed = parseInt(document.getElementById('seed').value) || 42;
     const steps = parseInt(document.getElementById('steps').value) || 4;
     const cfg = parseFloat(document.getElementById('cfg').value) || 1.0;
+    const prompt = document.getElementById('prompt').value.trim();
 
     // Create form data
     const formData = new FormData();
@@ -237,6 +238,11 @@ async function runInference() {
     formData.append('seed', seed);
     formData.append('steps', steps);
     formData.append('cfg', cfg);
+    
+    // Add prompt only if provided
+    if (prompt) {
+        formData.append('prompt', prompt);
+    }
 
     // Prepare headers
     const headers = {};

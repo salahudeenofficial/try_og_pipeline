@@ -516,6 +516,7 @@ async def infer(
     seed: int = Form(42),
     steps: int = Form(4),
     cfg: float = Form(1.0),
+    prompt: Optional[str] = Form(None),
     x_internal_auth: Optional[str] = Header(None),
 ):
     """
@@ -557,6 +558,7 @@ async def infer(
             seed=seed,
             steps=steps,
             cfg=cfg,
+            prompt=prompt,
         )
         
         # Run workflow synchronously

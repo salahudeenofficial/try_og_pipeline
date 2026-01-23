@@ -128,3 +128,14 @@ NOTES
 5. Server processes one job at a time (429 if busy)
 
 ================================================================================
+
+
+
+
+================================================================================
+prompts till data
+================================================================================
+
+1 - full body 
+    place the garment on the person.Preserve texture and color of the garment.
+2 - 

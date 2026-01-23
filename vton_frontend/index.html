@@ -118,6 +118,18 @@
                         <input type="number" id="cfg" value="1.0" min="0.1" max="20" step="0.1">
                     </div>
                 </div>
+                <div class="input-group" style="grid-column: 1 / -1; margin-top: 1rem;">
+                    <label for="prompt">Prompt (Optional)</label>
+                    <textarea 
+                        id="prompt" 
+                        rows="3" 
+                        placeholder="Leave empty to use default VTON prompt. Custom prompt for testing..."
+                        style="width: 100%; padding: 0.75rem; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); background: rgba(0,0,0,0.2); color: white; font-family: inherit; resize: vertical;"
+                    ></textarea>
+                    <small style="color: rgba(255,255,255,0.6); font-size: 0.85rem; margin-top: 0.5rem; display: block;">
+                        Custom prompt text. If empty, uses optimized default VTON prompt.
+                    </small>
+                </div>
             </section>
 
             <!-- Run Inference Button -->
