@@ -47,13 +47,14 @@ X-Internal-Auth: <your-auth-token>
 
 ### 7. `config` (string, required - JSON format)
 - Inference configuration as JSON string
-- Must contain: `seed`, `steps`, `cfg`
+- Fields: `seed`, `steps`, `cfg`, `prompt` (all optional)
 - Example: `'{"seed": 42, "steps": 4, "cfg": 1.0}'`
 
 **Config JSON Fields:**
 - `seed` (int, optional): Random seed (default: 42)
 - `steps` (int, optional): Inference steps (default: 4)
 - `cfg` (float, optional): Guidance scale (default: 1.0)
+- `prompt` (string, optional): Custom prompt text (default: uses built-in VTON prompt)
 
 ## Example Request (cURL)
 

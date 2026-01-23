@@ -35,6 +35,7 @@ class JobContext:
     seed: int = 42
     steps: int = 4
     cfg: float = 1.0
+    prompt: Optional[str] = None
     
     # Processing state
     temp_dir: Optional[str] = None
@@ -192,6 +193,7 @@ class InferenceStep(WorkflowStep):
                 cfg=context.cfg,
                 target_width=context.metadata.get("target_width"),
                 target_height=context.metadata.get("target_height"),
+                prompt=context.prompt,
             )
             
             context.inference_time_ms = (time.time() - infer_start) * 1000

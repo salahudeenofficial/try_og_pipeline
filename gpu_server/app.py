@@ -466,6 +466,7 @@ async def tryon(
         seed = job_config.get("seed", state.config.model.default_seed)
         steps = job_config.get("steps", state.config.model.default_steps)
         cfg = job_config.get("cfg", state.config.model.default_cfg)
+        prompt = job_config.get("prompt", None)  # Optional prompt from config
         
         # Read image data
         masked_user_image_data = await masked_user_image.read()
@@ -482,6 +483,7 @@ async def tryon(
             seed=seed,
             steps=steps,
             cfg=cfg,
+            prompt=prompt,
         )
         
         # Add background task

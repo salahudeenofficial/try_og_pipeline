@@ -10,7 +10,8 @@ The `config` field in the `/tryon` request is a **JSON string** that controls in
 {
   "seed": 42,
   "steps": 4,
-  "cfg": 1.0
+  "cfg": 1.0,
+  "prompt": "Custom prompt text here"
 }
 ```
 
@@ -107,6 +108,30 @@ The `config` field in the `/tryon` request is a **JSON string** that controls in
 
 ---
 
+### 4. `prompt` (string, optional)
+
+**Purpose:** Custom prompt text for the inference
+
+**Default:** Uses built-in VTON prompt (Chinese or English depending on model)
+
+**How it works:**
+- If not provided, uses the default VTON prompt optimized for virtual try-on
+- If provided, uses your custom prompt text
+- The prompt guides how the model transfers the garment
+
+**Example:**
+```json
+{"prompt": "Naturally dress the person with the garment, maintaining original fabric texture and color accuracy."}
+```
+
+**Use cases:**
+- **Default (no prompt):** Recommended - uses optimized VTON prompt
+- **Custom prompt:** For specific styling requirements or language preferences
+
+**Note:** The default prompt is optimized for virtual try-on. Only use custom prompts if you have specific requirements.
+
+---
+
 ## Complete Examples
 
 ### Minimal Config (uses all defaults)
@@ -117,6 +142,7 @@ This will use:
 - `seed: 42`
 - `steps: 4`
 - `cfg: 1.0`
+- `prompt: null` (uses default VTON prompt)
 
 ### Standard Config (recommended)
 ```json
@@ -124,6 +150,17 @@ This will use:
   "seed": 42,
   "steps": 4,
   "cfg": 1.0
+}
+```
+Uses default prompt (optimized for VTON).
+
+### Config with Custom Prompt
+```json
+{
+  "seed": 42,
+  "steps": 4,
+  "cfg": 1.0,
+  "prompt": "Naturally dress the person with the garment, maintaining original fabric texture and color accuracy."
 }
 ```
 
@@ -202,6 +239,7 @@ If you don't specify a field, the server uses defaults from `config.yaml`:
 | `seed` | `42` | `config.model.default_seed` |
 | `steps` | `4` | `config.model.default_steps` |
 | `cfg` | `1.0` | `config.model.default_cfg` |
+| `prompt` | `null` (uses built-in VTON prompt) | N/A |
 
 ---
 
@@ -266,5 +304,6 @@ All fields are optional. Missing fields will use defaults from `config.yaml`.
 | `seed` | Reproducibility | 42 | 42 | Controls randomness |
 | `steps` | Quality vs Speed | 4 | 4 | More steps = slower + better |
 | `cfg` | Guidance strength | 1.0 | 1.0 | Less impact for VTON |
+| `prompt` | Custom prompt | null | null (use default) | Guides garment transfer |
 
 **Best Practice:** Use `{"seed": 42, "steps": 4, "cfg": 1.0}` for optimal balance of speed and quality.
